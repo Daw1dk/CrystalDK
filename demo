@@ -1,0 +1,290 @@
+local CrystalDK = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"
+))()
+
+--[[
+ CrystalDK Version Alpha-1.1.0
+ Current issues: Resolution
+ Things to add: Changing PX to Scale, Updateable label
+
+ Since CrystalDK is in Alpha there are issues.
+ When key is entered double press Y to make blur and bloom enable.
+]]
+
+--[[
+Issues in depth:
+
+Resolution:
+The resolution is set in pixels. 2560x1440p on the current PX ranges works amazing.
+Needs changing PX to scale on same ratio relative to 2560x1440p
+]]
+
+--[[
+CrystalDK is a UI Library aiming to achieve a "Raycast" or "Glassmorphic" style.
+CrystalDK uses Rayfield style API calls to make it more beginner friendly.
+
+ Y to toggle CrystalDK
+
+ HOW THIS WORKS:
+
+ Load CrystalDK
+
+ CrystalDK:CreateWindow({
+     Name = "string",
+     LoadingTitle = "string",
+     LoadingSubtitle = "string",
+
+     KeySystem = true/false,
+     KeySettings = {
+         Title = "string",
+         Subtitle = "string",
+         Note = "string",
+         Keys = { "Key1", "Key2", ... },
+     },
+ })
+
+ Create a Tab
+
+ Window:CreateTab("string")
+
+ Below are all avaliable cards & their configuratives;
+
+ Tab:CreateDivider({
+     Label = "string",
+ })
+
+ Tab:CreateSlider({
+     Title = "string",
+     Subtitle = "string",
+     Min = number,
+     Max = number,
+     Default = number,
+     Callback = function(value) end,
+ })
+
+ slider:Set(number)
+ Will update slider
+
+ Tab:CreateStepper({
+     Title = "string",
+     Subtitle = "string",
+     Min = number,
+     Max = number,
+     Default = number,
+     Increment = number,
+     Callback = function(value) end,
+ })
+
+ Tab:CreateProgressBar({
+     Title = "string",
+     Subtitle = "string",
+     Default = number,  0–100
+ })
+
+ progressBar:Set(percent)
+ Will update Progress bar
+
+ DeveloperTab:CreateParagraph({
+     Title   = "string",
+     Content = "string",
+ })
+
+-- Will have option to change content later
+
+ Tab:CreateButton({
+     Title = "string",
+     Subtitle = "string",
+
+     RequireConfirmation = boolean,
+     ConfirmTitle = "string",
+     ConfirmSubtitle = "string",
+
+     RequireCooldown = boolean,
+     CooldownDuration = number,
+
+     Callback = function() end,
+ })
+
+ Tab:CreateToggle({
+     Title = "string",
+     Subtitle = "string",
+     Default = boolean,
+     Callback = function(state) end,
+ })
+
+ Tab:CreateDropdown({
+     Title = "string",
+     Subtitle = "string",
+     Options = { "Option1", "Option2", ... },
+     Default = "string",
+     Callback = function(selected) end,
+ })
+
+ Tab:CreateToggleDropdown({
+     Title = "string",
+     Subtitle = "string",
+     Options = {
+         { Label = "string", Default = boolean, Callback = function(state) end },
+         ...
+     },
+ })
+
+ Tab:CreateRGBSelector({
+     Title = "string",
+     Subtitle = "string",
+     Default = Color3,
+     Callback = function(color) end,
+ })
+
+ Tab:CreateKeybind({
+     Title = "string",
+     Subtitle = "string",
+     Default = Enum.KeyCode.X,
+     Callback = function(keyCode) end,
+ })
+
+ Tab:CreateInput({
+     Title = "string",
+     Subtitle = "string",
+     Placeholder = "string",
+     MaxLength = number,
+     Default = "string",
+     Callback = function(text) end,
+ })
+
+ Window:SendNotification({
+     Title = "string",
+     Subtitle = "string",
+     Duration = number,
+ })
+
+]]
+
+local Window = CrystalDK:CreateWindow({
+    Name = "CrystalDK by Daw1dk",
+    LoadingTitle = "CrystalDK",
+    LoadingSubtitle = "Small Feature Demo",
+    KeySystem = true,
+
+    KeySettings = {
+        Title    = "Key Required",
+        Subtitle = "Enter your access key",
+        Note     = "Join the Discord to obtain a valid key",
+        Keys     = { "Daw1dk", "FlaviusMaverick", "B4Eekker" },
+    },
+})
+
+-- KeySystem can be off, in which case settings are not needed
+-- To reference SessionID use "Session_ID"
+-- To reference UserScriptID use "User_Script_ID"
+
+local MovementTab = Window:CreateTab("Movement")
+local CameraTab   = Window:CreateTab("Camera")
+local TeleportTab = Window:CreateTab("Teleport")
+
+-- Creates tabs,  needs to be above all logic
+
+MovementTab:CreateDivider({ Label = "Character Movement" })
+
+MovementTab:CreateSlider({
+    Title = "WalkSpeed",
+    Subtitle = "Default = 16",
+    Min = 0,
+    Max = 200,
+    Default = 16,
+    Callback = function(v)
+        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum then hum.WalkSpeed = v end
+    end,
+})
+
+MovementTab:CreateStepper({
+    Title = "JumpPower",
+    Subtitle = "Default = 50",
+    Min = 0,
+    Max = 300,
+    Default = 50,
+    Increment = 5,
+    Callback = function(v)
+        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum then hum.JumpPower = v end
+    end,
+})
+
+CameraTab:CreateDivider({ Label = "Camera Settings" })
+
+CameraTab:CreateSlider({
+    Title = "Field of View",
+    Subtitle = "Default = 70",
+    Min = 30,
+    Max = 120,
+    Default = 70,
+    Callback = function(v)
+        workspace.CurrentCamera.FieldOfView = v
+    end,
+})
+
+TeleportTab:CreateDivider({ Label = "Teleport Options" })
+
+local playerList = {}
+for _, plr in ipairs(game.Players:GetPlayers()) do
+    table.insert(playerList, plr.Name)
+end
+
+local selectedPlayer = nil
+
+TeleportTab:CreateDropdown({
+    Title = "Player to Teleport To",
+    Subtitle = "Select a player",
+    Options = playerList,
+    Default = playerList[1],
+    Callback = function(name)
+        selectedPlayer = name
+    end,
+})
+
+TeleportTab:CreateButton({
+    Title = "Teleport to Player",
+    Subtitle = "Uses dropdown selection",
+    RequireConfirmation = false,
+    RequireCooldown = true,
+    CooldownDuration = 2,
+    Callback = function()
+        local target = game.Players:FindFirstChild(selectedPlayer)
+        local char = game.Players.LocalPlayer.Character
+        if target and target.Character and char then
+            char:PivotTo(target.Character:GetPivot())
+        end
+    end,
+})
+
+TeleportTab:CreateButton({
+    Title = "Teleport to Random Player",
+    Subtitle = "Excludes yourself",
+    RequireConfirmation = false,
+    RequireCooldown = true,
+    CooldownDuration = 3,
+    Callback = function()
+        local players = {}
+        for _, plr in ipairs(game.Players:GetPlayers()) do
+            if plr ~= game.Players.LocalPlayer then
+                table.insert(players, plr)
+            end
+        end
+
+        if #players > 0 then
+            local randomPlr = players[math.random(1, #players)]
+            local char = game.Players.LocalPlayer.Character
+            if randomPlr.Character and char then
+                char:PivotTo(randomPlr.Character:GetPivot())
+            end
+        end
+    end,
+})
+
+print("Session ID: " .. Session_ID)
+print("User ID: " .. User_Script_ID)
+
+-- Prints the Session ID and User Script ID (Helpful for debugging)
+
+-- Any issues report to b4eekker_83933 on Discord
