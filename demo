@@ -3,20 +3,12 @@ local CrystalDK = loadstring(game:HttpGet(
 ))()
 
 --[[
- CrystalDK Version Alpha-1.1.0
- Current issues: Resolution
- Things to add: Changing PX to Scale, Updateable label
+ CrystalDK Version Alpha-1.2.0
+ Current issues: Minimize not working
+ Things to add: Buttons
 
  Since CrystalDK is in Alpha there are issues.
- When key is entered double press Y to make blur and bloom enable.
-]]
-
---[[
-Issues in depth:
-
-Resolution:
-The resolution is set in pixels. 2560x1440p on the current PX ranges works amazing.
-Needs changing PX to scale on same ratio relative to 2560x1440p
+ Top right circle button is to move GUI.
 ]]
 
 --[[
@@ -24,6 +16,7 @@ CrystalDK is a UI Library aiming to achieve a "Raycast" or "Glassmorphic" style.
 CrystalDK uses Rayfield style API calls to make it more beginner friendly.
 
  Y to toggle CrystalDK
+ L to toggle Higher contrast
 
  HOW THIS WORKS:
 
@@ -83,13 +76,6 @@ CrystalDK uses Rayfield style API calls to make it more beginner friendly.
 
  progressBar:Set(percent)
  Will update Progress bar
-
- DeveloperTab:CreateParagraph({
-     Title   = "string",
-     Content = "string",
- })
-
--- Will have option to change content later
 
  Tab:CreateButton({
      Title = "string",
