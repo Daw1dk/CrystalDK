@@ -1,4 +1,36 @@
 --[[
  CrystalDK Version Beta-2.1.1
- Known issues: Confirmation bug - Unknown source or replication 
+ Issues in CrystalDK:
+
+ The sweeps are buggy. Heres the correct order:
+ On Holds: Left to right
+ On Cooldowns: Right to left
+ On DoubleClick: Right to left
+ On All others: Left to right to left (Faster than normal, but slower than current)
+
+ The QuickSelection buttons dont dissapear (turn transparent) when scrolling down or up (like cards)
+ The QuickSelection also has a wierd box background where the cards sit in, its transparent but white outline box
+ The QuickSelection also doesnt really work, it doesnt update bars or doesnt let toggles or buttons work
+ Its meant to be a 1:1 replica of the cards just smaller, like a 2x scaled down version.
+
+ CircleProgressBars are meant to be outside of the cards.
+ Theyre meant to not interfere with the actual card (i.e. its meant to not touch it)
+ Theyre card is meant to be as big as a normal card;
+ The ProgressBarHeight is supposed to be 2 card heights, and overlap other cards.
+
+ Confirmation is wierd. bugging out and throwing a warning. (Some of the times)
+
+ The UI is hard to see on dark maps, there needs to be like a shadow or a darker overlay?
+ The UI should have some feature which auto-dims or something which will just fix that.
+
+ Dropdown cards are wider than normal cards for some reason, that should be fixed - causes clipping
+
+ ImageSelection cards dont let the images fit, like the card ends and the text under cuts the border. - is still visible
+
+ UI should feel more polished, more glassmorphic.
+
+ I also want the UI to be in a way unblurrable, but only around the actual main window.
+ The UI in the main window should be blurred, while everything else remain clear.
 ]]
+
+-- To be fixed by Beta 2.2.0
