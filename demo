@@ -7,6 +7,9 @@ local CrystalDK = loadstring(game:HttpGet(
 
  Since CrystalDK is in Beta there may still be edge cases.
  Top right circle button is used to move GUI.
+ Y to toggle GUI
+ T to toggle Quick Selection
+ L to cycle themes
 ]]
 
 local Players = game:GetService("Players")
@@ -160,7 +163,7 @@ OverviewTab:CreateTitle({ Label = "Beta Overview" })
 
 OverviewTab:CreateParagraph({
     Title = "What This Shows",
-    Content = "This demo hits the Beta 2.0.0 surface: new cards, rule groups, permission/dependency rules, key-input cards, and mixed-action examples.",
+    Content = "This demo hits the Beta 2.1.1 surface: new cards, rule groups, permission/dependency rules, key-input cards, and mixed-action examples.",
 })
 
 local sessionLabel = OverviewTab:CreateLabel({
