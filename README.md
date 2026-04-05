@@ -13,3 +13,5 @@ Card rules are rules set on cards which can alter the function of the card durin
 All cards & card rules are listed in Demo (I think)
 
 This was a project solely made by Daw1dk / B4Eekker (Im one person)
+
+<img width="978" height="1083" alt="{0EEA182E-D1E2-4ABE-8786-2E19A1A28B24} (1)" src="https://github.com/user-attachments/assets/1f31e9de-533e-4258-a633-34df97dea09a" />
