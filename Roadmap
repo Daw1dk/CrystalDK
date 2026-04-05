@@ -1,0 +1,40 @@
+--[[
+ CrystalDK Version Beta-2.1.1
+
+ Roadmap:
+
+ New Cards: 
+  LineGraph - A line graph - complex
+  Table - A table, to present data...
+  SliderSelection - Like Image or Knob, but upward facing sliders.
+  Banner - Like a divider but an image
+  LinkParagraph - Paragraph which supports links
+  Color - A filled Progressbar with no text only filled with an adjustable color (i.e. for heatmaps)
+  PathInput - Will be an input for a path (i.e. game.Workspace.Trees.Model.Script)
+ 
+ New Card Rules:
+  CopyValue - Copies the output value, or input text, or helpful information on commands.
+  BringTo - Changes the GUI and focuses on a different card (I.e. from Main tab to Dev tab and scrolls down.)
+  RandomizeValue - Adjustable, will change values inputted (into sliders or steppers) with an adjustable limit
+  RequireRegion - Will require the player to be within a XYZ region to work
+  RequireCardVisible - Will be hidden untill other card is enabled (i.e. Aimbot & Aimbot Values)
+  HiddenCard - Will be invisible untill a condition is met (i.e. 500 coins on a game)
+  OnClose - Will execute when the GUI is closed
+  RequireKey - Will execute only if the player is holding down a specific key 
+  Transition - For sliders, Will smoothly go up to the given value instead of snapping.
+  RequirePing - Will require a players ping to be below X to execute
+  PermissionBlur - Will have the card info blurred untill the # permission is granted
+  ClickCounter - Will execute different callbacks based on # of clicks
+
+ New feature:
+  CardGrid - Will let you put cards in a 4x4 grid, saving space and being useful for small toggles or buttons.
+  Pinned favourites tab - Will be like the QuickSelection but will add a tab at the end called Favourites
+  QuickSearch - Ctrl+F will enable a floating search bar which lets you search for any card fast 
+  
+ CrystalDK Settings:
+  BlurIntensity - Default will be default, lets script change blur intensity
+  Reorder - When enabled, will let user drag & drop to reorder cards - complex
+  PermissionKey - Will automatically grant # permission based on key entered
+]]
+
+-- To be added by Beta 2.2.0
