@@ -35,6 +35,7 @@
   BlurIntensity - Default will be default, lets script change blur intensity
   Reorder - When enabled, will let user drag & drop to reorder cards - complex
   PermissionKey - Will automatically grant # permission based on key entered
+  SuffixKey - When entered with a suffix, (i.e. DemoKey:simple) then load a different version (i.e. loading a simplified version) - complex
 
  Optimisations to add:
   When stress testing 1000 cards in 1 tab, heavy lag. Needs optimising
@@ -43,3 +44,36 @@
 ]]
 
 -- To be added by Beta 2.2.0
+
+--[[
+ Complex explained in depth:
+
+ LineGraph:
+  Literally just a line graph, complex to code though.
+
+ Reorder:
+  Will let the user drag and drop cards to reorder.
+
+ SuffixKey:
+  Entering a suffix after : after the key will let the user select different "profiles"
+  
+  Example:
+
+  Entering Daw1dk loads normally
+  Entering Daw1dk:simple loads a simplified version 
+  Entering Daw1dk:complex loads a complex version 
+  Entering Daw1dk:test loads a in test version 
+
+  This will be scripted backend, with in settings there being a selectable list of enabled, with default being an option.
+
+  Upcoming suffixes;
+   
+   :simple - Will load with rate limits, less detail
+   :complex - Will load with less rate limits, more detail, more explorability within cards
+   :developer - Will unlimit all adjustable features
+   :tab:overview - Will load with an extra tab, where an overview of crystalDK is shown
+   :tab:developer - Will load with an extra tab, where adjustables are shown (i.e. a toggle to unlock sliders, or a kill switch)
+
+  - more to come soon
+   
+]]
