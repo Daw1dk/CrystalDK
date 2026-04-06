@@ -35,6 +35,11 @@
   BlurIntensity - Default will be default, lets script change blur intensity
   Reorder - When enabled, will let user drag & drop to reorder cards - complex
   PermissionKey - Will automatically grant # permission based on key entered
+
+ Optimisations to add:
+  When stress testing 1000 cards in 1 tab, heavy lag. Needs optimising
+  Multiple toggle loops (100+) cause frame breaks
+
 ]]
 
 -- To be added by Beta 2.2.0
