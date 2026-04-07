@@ -1,79 +1,15 @@
 --[[
- CrystalDK Version Beta-2.1.1
+ CrystalDK Version Beta-2.2.0
 
  Roadmap:
 
- New Cards: 
-  LineGraph - A line graph - complex
-  Table - A table, to present data...
-  SliderSelection - Like Image or Knob, but upward facing sliders.
-  Banner - Like a divider but an image
-  LinkParagraph - Paragraph which supports links
-  Color - A filled Progressbar with no text only filled with an adjustable color (i.e. for heatmaps)
-  PathInput - Will be an input for a path (i.e. game.Workspace.Trees.Model.Script)
- 
- New Card Rules:
-  CopyValue - Copies the output value, or input text, or helpful information on commands.
-  BringTo - Changes the GUI and focuses on a different card (I.e. from Main tab to Dev tab and scrolls down.)
-  RandomizeValue - Adjustable, will change values inputted (into sliders or steppers) with an adjustable limit
-  RequireRegion - Will require the player to be within a XYZ region to work
-  RequireCardVisible - Will be hidden untill other card is enabled (i.e. Aimbot & Aimbot Values)
-  HiddenCard - Will be invisible untill a condition is met (i.e. 500 coins on a game)
-  OnClose - Will execute when the GUI is closed
-  RequireKey - Will execute only if the player is holding down a specific key 
-  Transition - For sliders, Will smoothly go up to the given value instead of snapping.
-  RequirePing - Will require a players ping to be below X to execute
-  PermissionBlur - Will have the card info blurred untill the # permission is granted
-  ClickCounter - Will execute different callbacks based on # of clicks
-
- New feature:
-  CardGrid - Will let you put cards in a 4x4 grid, saving space and being useful for small toggles or buttons.
-  Pinned favourites tab - Will be like the QuickSelection but will add a tab at the end called Favourites
-  QuickSearch - Ctrl+F will enable a floating search bar which lets you search for any card fast 
-  
- CrystalDK Settings:
-  BlurIntensity - Default will be default, lets script change blur intensity
-  Reorder - When enabled, will let user drag & drop to reorder cards - complex
-  PermissionKey - Will automatically grant # permission based on key entered
-  SuffixKey - When entered with a suffix, (i.e. DemoKey:simple) then load a different version (i.e. loading a simplified version) - complex
-
- Optimisations to add:
-  When stress testing 1000 cards in 1 tab, heavy lag. Needs optimising
-  Multiple toggle loops (100+) cause frame breaks
-
+ N/A
 ]]
-
--- To be added by Beta 2.2.0
 
 --[[
  Complex explained in depth:
 
- LineGraph:
-  Literally just a line graph, complex to code though.
-
- Reorder:
-  Will let the user drag and drop cards to reorder.
-
- SuffixKey:
-  Entering a suffix after : after the key will let the user select different "profiles"
-  
-  Example:
-
-  Entering Daw1dk loads normally
-  Entering Daw1dk:simple loads a simplified version 
-  Entering Daw1dk:complex loads a complex version 
-  Entering Daw1dk:test loads a in test version 
-
-  This will be scripted backend, with in settings there being a selectable list of enabled, with default being an option.
-
-  Upcoming suffixes;
-   
-   :simple - Will load with rate limits, less detail
-   :complex - Will load with less rate limits, more detail, more explorability within cards
-   :developer - Will unlimit all adjustable features
-   :tab:overview - Will load with an extra tab, where an overview of crystalDK is shown
-   :tab:developer - Will load with an extra tab, where adjustables are shown (i.e. a toggle to unlock sliders, or a kill switch)
-
-  - more to come soon
-   
+ N/A
 ]]
+
+-- To be added by Beta 2.3.0
