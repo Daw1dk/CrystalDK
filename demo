@@ -1,26 +1,70 @@
-local CrystalDK = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"
-))()
+local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"))()
 
 --[[
- CrystalDK Version Beta-2.1.1
+ CrystalDK Version Beta-2.2.0 Demo
 
- Since CrystalDK is in Beta there may still be edge cases.
- Top right circle button is used to move GUI.
- Y to toggle GUI
- T to toggle Quick Selection
- L to cycle themes
+ This demo now covers the full public surface:
+  all cards, all core card rules, window helpers, key settings, and selection cards
+
+ Y = Toggle GUI
+ T = Toggle Quick Selection
+ L = Cycle Theme
 ]]
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local function getCamera()
+    return workspace.CurrentCamera
+end
 
 local Window
+local OverviewTab
+local CardsTab
+local InputsTab
+local SelectorsTab
+local AdvancedTab
+local RulesTab
+local SystemTab
+
+local runtimeStatus
+local demoProgress
+local demoCircle
+local suffixLabel
+local permissionLabel
+local pingLabel
+local closeCountLabel
+local regionLabel
+local resolvedPathLabel
+local flatColorCard
+local runtimeTable
+local runtimeGraph
+local sliderSelection
+local pathInput
+local notifyKeybind
+local getWindowPermission
+local getWindowSuffix
+
+local graphPoints = {18, 28, 34, 41, 37, 52}
+local closeCount = 0
+local blurAmount = 22
+local demoRegionCenter = nil
+local colorIndex = 1
+local placeholderImage = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+local demoColors = {
+    Color3.fromRGB(255, 90, 90),
+    Color3.fromRGB(255, 180, 90),
+    Color3.fromRGB(80, 220, 120),
+    Color3.fromRGB(100, 200, 255),
+}
+
+local function round(n)
+    return math.floor((tonumber(n) or 0) + 0.5)
+end
 
 local function getCharacter()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -36,8 +80,23 @@ local function getRoot()
     return character and character:FindFirstChild("HumanoidRootPart")
 end
 
-local function getBloomEffect()
-    return Lighting:FindFirstChildOfClass("BloomEffect")
+local function readPingMs()
+    local ok, result = pcall(function()
+        local item = Stats.Network.ServerStatsItem["Data Ping"]
+        if item and item.GetValue then
+            return tonumber(item:GetValue())
+        end
+        if item and item.GetValueString then
+            local valueString = tostring(item:GetValueString())
+            local ms = valueString:match("([%d%.]+)")
+            return tonumber(ms)
+        end
+        return nil
+    end)
+    if ok then
+        return result
+    end
+    return nil
 end
 
 local function notify(title, subtitle, duration)
@@ -62,53 +121,118 @@ local function setStatus(card, status, percent)
     if card and type(card.SetStatus) == "function" then
         card:SetStatus(status, percent)
     elseif card and type(card.Set) == "function" then
-        local text = percent ~= nil and (tostring(status) .. " " .. tostring(percent) .. "%") or tostring(status)
-        card:Set(text)
+        card:Set(status, percent)
     end
 end
 
-local function setPlayerWalkSpeed(value)
-    local humanoid = getHumanoid()
-    if humanoid then
-        humanoid.WalkSpeed = value
+local function updateRuntimeTable()
+    if not runtimeTable or not Window then
+        return
     end
+
+    local root = getRoot()
+    local ping = readPingMs()
+    local distance = demoRegionCenter and root and round((root.Position - demoRegionCenter).Magnitude) or "No anchor"
+
+    runtimeTable:SetRows({
+        {Name = "Permission", Value = tostring(getWindowPermission())},
+        {Name = "Suffix", Value = tostring(getWindowSuffix() or "none")},
+        {Name = "Ping", Value = ping and (tostring(round(ping)) .. " ms") or "n/a"},
+        {Name = "Region Dist", Value = tostring(distance)},
+    })
 end
 
-local function setPlayerJumpPower(value)
-    local humanoid = getHumanoid()
-    if humanoid then
-        humanoid.JumpPower = value
+local function syncOverview(value, labelText)
+    local nextValue = math.clamp(tonumber(value) or 0, 0, 100)
+    setCardValue(demoProgress, nextValue)
+    setCardValue(demoCircle, nextValue)
+    setStatus(runtimeStatus, labelText or "Running", nextValue)
+    table.insert(graphPoints, nextValue)
+    while #graphPoints > 12 do
+        table.remove(graphPoints, 1)
     end
+    if runtimeGraph then
+        runtimeGraph:SetPoints(graphPoints)
+    end
+    updateRuntimeTable()
 end
 
-local function getPlayerNames()
-    local list = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        table.insert(list, player.Name)
+local function averageValues(values)
+    local total = 0
+    local count = 0
+    for _, value in ipairs(values or {}) do
+        total += tonumber(value) or 0
+        count += 1
     end
-    table.sort(list)
-    return list
+    return count > 0 and (total / count) or 0
 end
 
-local selectedPlayer = nil
-local savedPosition = nil
+getWindowPermission = function()
+    if Window and Window.GetPermissionLevel then
+        return Window:GetPermissionLevel()
+    end
+    return 0
+end
+
+getWindowSuffix = function()
+    if Window and Window.GetKeySuffix then
+        return Window:GetKeySuffix()
+    end
+    return nil
+end
 
 Window = CrystalDK:CreateWindow({
-    Name = "CrystalDK Beta 2.1.1",
+    Name = "CrystalDK Beta 2.2.0",
     LoadingTitle = "CrystalDK Beta",
-    LoadingSubtitle = "Full Feature + Rules Demo",
+    LoadingSubtitle = "Cards + Rules Demo",
 
     KeySystem = true,
     PermissionLevel = 0,
     ToggleUIKey = Enum.KeyCode.Y,
     MinimizeKey = Enum.KeyCode.T,
     ThemeCycleKey = Enum.KeyCode.L,
+    BlurIntensity = blurAmount,
+
+    PermissionKey = function(rawKey, suffix, entry)
+        if suffix == "developer" then
+            return 3
+        end
+        if suffix == "complex" then
+            return 2
+        end
+        return entry and (entry.Permission or entry.Level) or 1
+    end,
+
+    SuffixProfiles = {
+        simple = {
+            Permission = 1,
+            OnLoad = function()
+                notify("Profile", "simple profile loaded", 2)
+            end,
+        },
+        complex = {
+            Permission = 2,
+            OnLoad = function()
+                notify("Profile", "complex profile loaded", 2)
+            end,
+        },
+        developer = {
+            Permission = 3,
+            OnLoad = function()
+                notify("Profile", "developer profile loaded", 2)
+            end,
+        },
+    },
 
     KeySettings = {
         Title = "Beta Key Required",
         Subtitle = "Enter your access key",
-        Note = "Use one of the demo keys below",
-        Keys = { "Daw1dk", "FlaviusMaverick", "B4Eekker" },
+        Note = "Examples: Daw1dk, Daw1dk:complex, Daw1dk:developer",
+        Keys = {
+            {Key = "Daw1dk", Permission = 1, Suffixes = {"simple", "complex", "developer"}},
+            {Key = "FlaviusMaverick", Permission = 2, Suffixes = {"complex", "developer"}},
+            {Key = "B4Eekker", Permission = 3, Suffixes = {"developer"}},
+        },
     },
 
     GlobalCardRules = {
@@ -117,293 +241,281 @@ Window = CrystalDK:CreateWindow({
 
     RuleGroups = {
         SafetyAction = {
-            { RequireHold = true },
-            { HoldTime = 0.75 },
-            { Delay = 0.15 },
+            {RequireHold = true},
+            {HoldTime = 0.75},
+            {Delay = 0.12},
         },
-        AdminGate = {
-            { RequirePermission = 2 },
-            { RequireConfirmation = true },
+        AdminOnly = {
+            {RequirePermission = 2},
+            {RequireConfirmation = true},
         },
-        DependencyGate = {
-            { RequireDependency = { Id = "master_enable", Equals = true } },
-        },
-    },
-
-    Commands = {
-        help = function()
-            notify("Commands", "help, bright <n>, fov <n>, speed <n>", 3)
-        end,
-        bright = function(raw, parts)
-            local value = tonumber(parts[2]) or 2
-            Lighting.Brightness = value
-            notify("Brightness", "Lighting.Brightness = " .. tostring(value))
-        end,
-        fov = function(raw, parts)
-            local value = math.clamp(tonumber(parts[2]) or 70, 30, 120)
-            Camera.FieldOfView = value
-            notify("FOV", "Camera.FieldOfView = " .. tostring(value))
-        end,
-        speed = function(raw, parts)
-            local value = math.clamp(tonumber(parts[2]) or 16, 0, 200)
-            setPlayerWalkSpeed(value)
-            notify("WalkSpeed", "Humanoid.WalkSpeed = " .. tostring(value))
-        end,
     },
 })
 
-local OverviewTab = Window:CreateTab("Overview")
-local MovementTab = Window:CreateTab("Movement")
-local CameraTab = Window:CreateTab("Camera")
-local TeleportTab = Window:CreateTab("Teleport")
-local RulesTab = Window:CreateTab("Rules")
-local SystemTab = Window:CreateTab("System")
+Window:RegisterCommand({
+    ping = function()
+        local ping = readPingMs()
+        notify("Command", ping and (tostring(round(ping)) .. " ms") or "Ping unavailable", 1.6)
+    end,
+    theme = function()
+        Window:CycleTheme()
+        notify("Command", "Theme cycled", 1.6)
+    end,
+    rules = function()
+        Window:BringToCard({Tab = "Rules"})
+    end,
+    pulse = function(_, parts)
+        local nextValue = tonumber(parts[2]) or math.random(12, 96)
+        syncOverview(nextValue, "Command Pulse")
+    end,
+})
 
-OverviewTab:CreateTitle({ Label = "Beta Overview" })
+OverviewTab = Window:CreateTab("Overview")
+CardsTab = Window:CreateTab("Cards")
+InputsTab = Window:CreateTab("Inputs")
+SelectorsTab = Window:CreateTab("Selectors")
+AdvancedTab = Window:CreateTab("Advanced")
+RulesTab = Window:CreateTab("Rules")
+SystemTab = Window:CreateTab("System")
+
+OverviewTab:CreateTitle({Label = "Beta 2.2.0 Overview"})
+
+OverviewTab:CreateBanner({
+    Title = "New Demo Surface",
+    Subtitle = "Full card coverage, full rule coverage, updated shell behavior",
+    Tint = Color3.fromRGB(10, 14, 24),
+    TintTransparency = 0.22,
+    Callback = function()
+        notify("Banner", "This demo is now focused on the 2.2.0 LIB surface", 2)
+    end,
+})
 
 OverviewTab:CreateParagraph({
-    Title = "What This Shows",
-    Content = "This demo hits the Beta 2.1.1 surface: new cards, rule groups, permission/dependency rules, key-input cards, and mixed-action examples.",
+    Title = "What This Demo Covers",
+    Content = "This script demonstrates every active card constructor, the full core rule set, the centered tab carousel, quick-search helpers, and the updated status / progress presentation.",
 })
 
-local sessionLabel = OverviewTab:CreateLabel({
-    Id = "session_label",
-    Title = "Session ID",
-    Subtitle = "Uses the generated runtime id",
-    Value = Session_ID,
-})
-
-local playerCountLabel = OverviewTab:CreateLabel({
-    Id = "live_players",
-    Title = "Live Player Count",
-    Subtitle = "RequireUpdate demo",
-    Value = #Players:GetPlayers(),
+suffixLabel = OverviewTab:CreateLabel({
+    Id = "suffix_profile",
+    Title = "Loaded Suffix",
+    Subtitle = "PermissionKey + SuffixProfiles demo",
+    Value = "none",
     Rules = {
         RequireUpdate = function(state, obj)
-            state._lastPlayerCountTick = state._lastPlayerCountTick or 0
-            if os.clock() - state._lastPlayerCountTick >= 0.5 then
-                state._lastPlayerCountTick = os.clock()
-                obj:Set(#Players:GetPlayers())
+            state._suffixTick = state._suffixTick or 0
+            if os.clock() - state._suffixTick >= 0.25 then
+                state._suffixTick = os.clock()
+                obj:Set(getWindowSuffix() or "none")
             end
         end,
     },
 })
 
-local permissionLabel = OverviewTab:CreateLabel({
-    Id = "live_permission",
+permissionLabel = OverviewTab:CreateLabel({
+    Id = "permission_live",
     Title = "Permission Level",
-    Subtitle = "GrantPermission + RequireUpdate demo",
-    Value = Window:GetPermissionLevel(),
+    Subtitle = "Live value from Window:GetPermissionLevel()",
+    Value = getWindowPermission(),
     Rules = {
         RequireUpdate = function(state, obj)
-            state._lastPermissionTick = state._lastPermissionTick or 0
-            if os.clock() - state._lastPermissionTick >= 0.25 then
-                state._lastPermissionTick = os.clock()
-                obj:Set(state.permission)
+            state._permissionTick = state._permissionTick or 0
+            if os.clock() - state._permissionTick >= 0.2 then
+                state._permissionTick = os.clock()
+                obj:Set(getWindowPermission())
             end
         end,
     },
 })
 
-local demoProgress = OverviewTab:CreateProgressBar({
-    Id = "demo_progress",
-    Title = "Demo Completion",
-    Subtitle = "ProgressBar card",
-    Default = 35,
-})
-
-local demoCircle = OverviewTab:CreateCircleProgressBar({
-    Id = "demo_circle",
-    Title = "Circular Progress",
-    Subtitle = "Tall half-arc progress card mounted to the left",
-    Default = 35,
-})
-
-local demoStatus = OverviewTab:CreateStatusIndicator({
-    Id = "demo_status",
-    Title = "Runtime Status",
-    Subtitle = "StatusIndicator card",
-    Default = "Ready",
-})
-
-OverviewTab:CreateButton({
-    Title = "Advance Demo Progress",
-    Subtitle = "Updates the progress cards and status",
-    Callback = function()
-        local nextValue = math.min((Window:GetValue("demo_progress") or 35) + 5, 100)
-        setCardValue(demoProgress, nextValue)
-        setCardValue(demoCircle, nextValue)
-        setStatus(demoStatus, nextValue >= 100 and "Complete" or "Running", nextValue)
-    end,
-})
-
-OverviewTab:CreateButton({
-    Title = "Play Showcase Sweep",
-    Subtitle = "Shows the new sweep fills, half-arc motion, and status feedback",
-    RequireCooldown = true,
-    CooldownDuration = 4,
-    Callback = function()
-        task.spawn(function()
-            local sequence = {12, 28, 46, 63, 81, 100, 58, 35}
-            for _, value in ipairs(sequence) do
-                setCardValue(demoProgress, value)
-                setCardValue(demoCircle, value)
-                setStatus(demoStatus, value >= 100 and "Peak" or "Sweeping", value)
-                task.wait(0.28)
+pingLabel = OverviewTab:CreateLabel({
+    Id = "ping_live",
+    Title = "Ping",
+    Subtitle = "Live network ping for RequirePing demos",
+    Value = "n/a",
+    Rules = {
+        RequireUpdate = function(state, obj)
+            state._pingTick = state._pingTick or 0
+            if os.clock() - state._pingTick >= 0.5 then
+                state._pingTick = os.clock()
+                local ping = readPingMs()
+                obj:Set(ping and (tostring(round(ping)) .. " ms") or "n/a")
             end
-            notify("Showcase", "Try the search bar, hover cards, and use Y / T / L", 3)
-        end)
-    end,
-})
-
-MovementTab:CreateTitle({ Label = "Character Movement" })
-
-MovementTab:CreateSlider({
-    Id = "walkspeed_slider",
-    Title = "WalkSpeed",
-    Subtitle = "Default = 16",
-    Min = 0,
-    Max = 200,
-    Default = 16,
-    Callback = function(v)
-        setPlayerWalkSpeed(v)
-    end,
-})
-
-MovementTab:CreateStepper({
-    Title = "JumpPower",
-    Subtitle = "Default = 50",
-    Min = 0,
-    Max = 300,
-    Default = 50,
-    Increment = 5,
-    Callback = function(v)
-        setPlayerJumpPower(v)
-    end,
-})
-
-MovementTab:CreateToggle({
-    Title = "Sprint Toggle",
-    Subtitle = "Simple Toggle card",
-    Default = false,
-    Callback = function(state)
-        setPlayerWalkSpeed(state and 32 or 16)
-        notify("Sprint", state and "Enabled" or "Disabled")
-    end,
-})
-
-MovementTab:CreateGroupSelection({
-    Title = "Movement Preset",
-    Subtitle = "GroupSelection dropdown with grouped presets",
-    Groups = {
-        Legit = {
-            { Label = "Default", Value = "default" },
-            { Label = "Runner", Value = "runner" },
-        },
-        Boosted = {
-            { Label = "Fast", Value = "fast" },
-            { Label = "Super Jump", Value = "superjump" },
-        },
+        end,
     },
-    Default = "default",
-    Callback = function(selection)
-        local value = selection.Value or selection
-        if value == "default" then
-            setPlayerWalkSpeed(16)
-            setPlayerJumpPower(50)
-        elseif value == "runner" then
-            setPlayerWalkSpeed(28)
-            setPlayerJumpPower(50)
-        elseif value == "fast" then
-            setPlayerWalkSpeed(50)
-            setPlayerJumpPower(70)
-        elseif value == "superjump" then
-            setPlayerWalkSpeed(20)
-            setPlayerJumpPower(120)
-        end
-        notify("Movement Preset", tostring(value))
-    end,
 })
 
-MovementTab:CreateRepeatToggle({
-    Title = "Repeat Jump Demo",
-    Subtitle = "RepeatToggle card",
-    Default = false,
-    Interval = 0.85,
+closeCountLabel = OverviewTab:CreateLabel({
+    Id = "close_count",
+    Title = "GUI Close Count",
+    Subtitle = "OnClose rule demo",
+    Value = closeCount,
+    Rules = {
+        OnClose = function()
+            closeCount += 1
+        end,
+        RequireUpdate = function(state, obj)
+            state._closeTick = state._closeTick or 0
+            if os.clock() - state._closeTick >= 0.25 then
+                state._closeTick = os.clock()
+                obj:Set(closeCount)
+            end
+        end,
+    },
+})
+
+demoProgress = OverviewTab:CreateProgressBar({
+    Id = "demo_progress",
+    Title = "Demo Progress",
+    Subtitle = "Standard progress bar",
+    Default = 36,
+})
+
+demoCircle = OverviewTab:CreateCircleProgressBar({
+    Id = "demo_circle",
+    Title = "Circle Progress",
+    Subtitle = "Arc sits outside the card and overlaps nearby space",
+    Default = 36,
+    ProgressBarHeight = 2,
+})
+
+runtimeStatus = OverviewTab:CreateStatusIndicator({
+    Id = "runtime_status",
+    Title = "Runtime Status",
+    Subtitle = "Gradient-driven StatusIndicator",
+    Default = "Ready",
+    GradientColors = {
+        Color3.fromRGB(255, 90, 90),
+        Color3.fromRGB(255, 190, 90),
+        Color3.fromRGB(90, 220, 120),
+    },
+})
+
+OverviewTab:CreateButton({
+    Title = "Advance Overview",
+    Subtitle = "Updates progress, circle progress, status, graph, and runtime table",
     Callback = function()
-        local humanoid = getHumanoid()
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+        local nextValue = math.min((Window:GetValue("demo_progress") or 36) + 9, 100)
+        syncOverview(nextValue, nextValue >= 100 and "Complete" or "Processing")
     end,
 })
 
-CameraTab:CreateTitle({ Label = "Camera Settings" })
-
-CameraTab:CreateSlider({
-    Title = "Field of View",
-    Subtitle = "Default = 70",
-    Min = 30,
-    Max = 120,
-    Default = 70,
-    Callback = function(v)
-        Camera.FieldOfView = v
+OverviewTab:CreateButton({
+    Title = "Copy Session ID",
+    Subtitle = "CopyValue card rule demo",
+    Rules = {
+        CopyValue = function()
+            return tostring(Session_ID or "missing-session")
+        end,
+    },
+    Callback = function()
+        notify("CopyValue", "Session ID copied", 1.6)
     end,
 })
 
-CameraTab:CreateDropdown({
-    Title = "Camera Mode",
-    Subtitle = "Dropdown card",
-    Options = { "Default", "Zoomed", "Cinematic" },
-    Default = "Default",
-    Callback = function(selected)
-        if selected == "Default" then
-            Camera.FieldOfView = 70
-        elseif selected == "Zoomed" then
-            Camera.FieldOfView = 50
-        elseif selected == "Cinematic" then
-            Camera.FieldOfView = 85
-        end
+OverviewTab:CreateButton({
+    Title = "Bring To Runtime Table",
+    Subtitle = "BringTo card rule demo",
+    Rules = {
+        BringTo = {Tab = "Cards", Id = "runtime_table"},
+    },
+    Callback = function()
+        notify("BringTo", "Jumping to the runtime table", 1.6)
     end,
 })
 
-CameraTab:CreateToggleDropdown({
-    Title = "Post FX",
-    Subtitle = "ToggleDropdown card",
-    Options = {
-        {
-            Label = "Bloom",
-            Default = true,
-            Callback = function(state)
-                local bloom = getBloomEffect()
-                if bloom then
-                    bloom.Enabled = state
-                end
-            end,
-        },
-        {
-            Label = "ColorShift",
-            Default = false,
-            Callback = function(state)
-                Lighting.ColorShift_Top = state and Color3.fromRGB(30, 60, 120) or Color3.new(0, 0, 0)
-            end,
-        },
-        {
-            Label = "Night Tint",
-            Default = false,
-            Callback = function(state)
-                Lighting.Ambient = state and Color3.fromRGB(45, 55, 80) or Color3.fromRGB(128, 128, 128)
-            end,
-        },
+OverviewTab:CreateLinkParagraph({
+    Title = "Useful Links",
+    Content = "These links use the new LinkParagraph card. In this demo they copy the URL so you can paste it wherever you need it.",
+    Links = {
+        {Label = "GitHub", Url = "https://github.com/Daw1dk/CrystalDK"},
+        {Label = "Discord", Url = "https://discord.com/users/b4eekker_83933"},
+        {Label = "Raw Lua", Url = "https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"},
     },
 })
 
-CameraTab:CreateKnobSlider({
-    Title = "Camera Knobs",
-    Subtitle = "Paired half-arc knob cards with mirrored left / right placement",
-    Knobs = {
+CardsTab:CreateTitle({Label = "Roadmap Card Demo"})
+
+CardsTab:CreateBanner({
+    Title = "Roadmap Cards",
+    Subtitle = "Banner, Color, PathInput, Table, LineGraph, SliderSelection, and CardGrid are shown below",
+    Tint = Color3.fromRGB(14, 18, 30),
+    TintTransparency = 0.26,
+})
+
+flatColorCard = CardsTab:CreateColor({
+    Id = "flat_color",
+    Title = "Flat Color",
+    Subtitle = "CreateColor card",
+    Default = demoColors[colorIndex],
+})
+
+CardsTab:CreateButton({
+    Title = "Cycle Flat Color",
+    Subtitle = "Updates CreateColor and status",
+    Callback = function()
+        colorIndex = (colorIndex % #demoColors) + 1
+        flatColorCard:Set(demoColors[colorIndex])
+        setStatus(runtimeStatus, "Palette", ((colorIndex - 1) / math.max(#demoColors - 1, 1)) * 100)
+    end,
+})
+
+pathInput = CardsTab:CreatePathInput({
+    Id = "workspace_path",
+    Title = "Workspace Path",
+    Subtitle = "CreatePathInput card",
+    Placeholder = "game.Workspace.Terrain",
+    Default = "game.Workspace",
+})
+
+resolvedPathLabel = CardsTab:CreateLabel({
+    Id = "path_result",
+    Title = "Resolved Path",
+    Subtitle = "Result from PathInput:GetResolved()",
+    Value = "not resolved yet",
+})
+
+CardsTab:CreateButton({
+    Title = "Resolve Path",
+    Subtitle = "Finds the instance and reports the result",
+    Callback = function()
+        local instance = pathInput:GetResolved()
+        if instance then
+            resolvedPathLabel:Set(instance:GetFullName())
+            setStatus(runtimeStatus, "Resolved", 100)
+        else
+            resolvedPathLabel:Set("Path not found")
+            setStatus(runtimeStatus, "Missing", 12)
+        end
+    end,
+})
+
+runtimeTable = CardsTab:CreateTable({
+    Id = "runtime_table",
+    Title = "Runtime Table",
+    Subtitle = "CreateTable card",
+    Columns = {"Name", "Value"},
+    Rows = {
+        {Name = "Permission", Value = tostring(getWindowPermission())},
+        {Name = "Suffix", Value = tostring(getWindowSuffix() or "none")},
+        {Name = "Ping", Value = "n/a"},
+        {Name = "Region Dist", Value = "No anchor"},
+    },
+})
+
+runtimeGraph = CardsTab:CreateLineGraph({
+    Id = "runtime_graph",
+    Title = "Runtime Graph",
+    Subtitle = "CreateLineGraph card",
+    Points = graphPoints,
+})
+
+sliderSelection = CardsTab:CreateSliderSelection({
+    Id = "stacked_sliders",
+    Title = "Slider Selection",
+    Subtitle = "CreateSliderSelection card",
+    Sliders = {
         {
-            Label = "Brightness",
+            Label = "Bright",
             Min = 0,
             Max = 10,
             Default = 2,
@@ -416,239 +528,405 @@ CameraTab:CreateKnobSlider({
             Min = 0,
             Max = 24,
             Default = 14,
+            Callback = function(value)
+                Lighting.ClockTime = value
+            end,
         },
         {
-            Label = "FOV Bias",
-            Min = 30,
+            Label = "FOV",
+            Min = 40,
             Max = 120,
             Default = 70,
+            Callback = function(value)
+                local camera = getCamera()
+                if camera then
+                    camera.FieldOfView = value
+                end
+            end,
         },
     },
 })
 
-CameraTab:CreateRGBSelector({
-    Title = "Ambient RGB",
-    Subtitle = "Dropdown RGB editor",
-    Default = Lighting.Ambient,
-    Callback = function(color)
-        Lighting.Ambient = color
+CardsTab:CreateButton({
+    Title = "Capture Slider Snapshot",
+    Subtitle = "Pushes the average slider value into the graph and runtime status",
+    Callback = function()
+        local values = sliderSelection:Get()
+        local average = averageValues(values)
+        syncOverview(average, "Snapshot")
+        notify("SliderSelection", "average = " .. tostring(round(average)), 1.6)
     end,
 })
 
-CameraTab:CreateHSVSelector({
-    Title = "Outdoor Ambient HSV",
-    Subtitle = "Dropdown HSV editor",
-    Default = Lighting.OutdoorAmbient,
-    Callback = function(color)
-        Lighting.OutdoorAmbient = color
-    end,
-})
-
-CameraTab:CreateColorSelection({
-    Title = "Theme Palette",
-    Subtitle = "ColorSelection dropdown with side-by-side swatch previews",
-    Options = {
-        { Label = "Aurora", Color = Color3.fromRGB(100, 255, 160) },
-        { Label = "Ice", Color = Color3.fromRGB(120, 210, 255) },
-        { Label = "Sunset", Color = Color3.fromRGB(255, 150, 105) },
-        { Label = "Royal", Color = Color3.fromRGB(80, 120, 255) },
+CardsTab:CreateCardGrid({
+    Id = "card_grid",
+    Title = "Quick Grid",
+    Subtitle = "CreateCardGrid card",
+    Columns = 4,
+    Items = {
+        {
+            Label = "Theme",
+            Callback = function()
+                Window:CycleTheme()
+            end,
+        },
+        {
+            Label = "Search",
+            Callback = function()
+                Window:FocusSearch()
+            end,
+        },
+        {
+            Label = "Rules",
+            Callback = function()
+                Window:BringToCard({Tab = "Rules"})
+            end,
+        },
+        {
+            Label = "Alerts",
+            Type = "Toggle",
+            Default = true,
+            Callback = function(state)
+                setStatus(runtimeStatus, state and "Alerts On" or "Alerts Off", state and 100 or 10)
+            end,
+        },
+        {
+            Label = "Graph +",
+            Callback = function()
+                syncOverview(math.random(15, 95), "Injected")
+            end,
+        },
+        {
+            Label = "System",
+            Callback = function()
+                Window:BringToCard({Tab = "System"})
+            end,
+        },
+        {
+            Label = "Overview",
+            Callback = function()
+                Window:BringToCard({Tab = "Overview"})
+            end,
+        },
+        {
+            Label = "Admin",
+            Type = "Toggle",
+            Default = false,
+            Callback = function(state)
+                if state then
+                    Window:SetPermissionLevel(2)
+                else
+                    Window:SetPermissionLevel(0)
+                end
+            end,
+        },
     },
-    Default = Color3.fromRGB(100, 255, 160),
+})
+
+CardsTab:CreateDivider({Label = "Full Surface"})
+
+CardsTab:CreateParagraph({
+    Title = "Remaining Surface",
+    Content = "The Inputs, Selectors, and Advanced tabs cover the rest of the LIB surface so every active card constructor is shown in this demo build.",
+})
+
+InputsTab:CreateTitle({Label = "Input / Validation Surface"})
+
+InputsTab:CreateParagraph({
+    Title = "Input Rules",
+    Content = "These cards demonstrate TrimSpace, BindValue, OnlyCharacter, OnlyNegative, RequireValidation, CommandInput, and rule-local Commands.",
+})
+
+InputsTab:CreateDivider({Label = "Bind / Validate"})
+
+local boundPreviewLabel = InputsTab:CreateLabel({
+    Id = "bound_preview",
+    Title = "Bound Preview",
+    Subtitle = "BindValue target label",
+    Value = "ready",
+})
+
+InputsTab:CreateInput({
+    Id = "trimmed_bound_input",
+    Title = "Trimmed Mirror",
+    Subtitle = "TrimSpace + BindValue",
+    Placeholder = "type with spaces",
+    MaxLength = 28,
+    Rules = {
+        TrimSpace = true,
+        BindValue = "bound_preview",
+    },
+})
+
+InputsTab:CreateInput({
+    Title = "Characters Only",
+    Subtitle = "OnlyCharacter",
+    Placeholder = "letters only",
+    MaxLength = 18,
+    Rules = {
+        OnlyCharacter = true,
+    },
+})
+
+InputsTab:CreateInput({
+    Title = "Negative Number",
+    Subtitle = "OnlyNumber + OnlyNegative",
+    Placeholder = "-25",
+    MaxLength = 8,
+    Rules = {
+        OnlyNumber = true,
+        OnlyNegative = true,
+    },
+})
+
+InputsTab:CreateInput({
+    Title = "Validated Code",
+    Subtitle = "RequireValidation + ValidationPattern",
+    Placeholder = "CDK-101",
+    MaxLength = 7,
+    Rules = {
+        RequireValidation = true,
+        ValidationPattern = "^CDK%-%d%d%d$",
+    },
+})
+
+InputsTab:CreateInput({
+    Title = "Command Console",
+    Subtitle = "CommandInput + Commands | try ping, theme, rules, pulse 80, or localreset",
+    Placeholder = "enter command",
+    MaxLength = 24,
+    Rules = {
+        CommandInput = true,
+        Commands = {
+            localreset = function()
+                syncOverview(0, "Local Reset")
+                notify("Local Command", "overview reset", 1.6)
+            end,
+        },
+    },
+})
+
+SelectorsTab:CreateTitle({Label = "Selector Cards"})
+
+SelectorsTab:CreateParagraph({
+    Title = "Color / Choice Cards",
+    Content = "These cards cover RGB, HSV, palette, gradient, and icon selection. The callbacks feed into the shared flat color and runtime status cards.",
+})
+
+SelectorsTab:CreateDivider({Label = "Color Controls"})
+
+SelectorsTab:CreateRGBSelector({
+    Title = "RGB Selector",
+    Subtitle = "CreateRGBSelector card",
+    Default = Color3.fromRGB(100, 200, 255),
+    Callback = function(color)
+        if flatColorCard then
+            flatColorCard:Set(color)
+        end
+        setStatus(runtimeStatus, "RGB", 24)
+    end,
+})
+
+SelectorsTab:CreateHSVSelector({
+    Title = "HSV Selector",
+    Subtitle = "CreateHSVSelector card",
+    Default = Color3.fromRGB(255, 140, 90),
+    Callback = function(color)
+        if flatColorCard then
+            flatColorCard:Set(color)
+        end
+        setStatus(runtimeStatus, "HSV", 48)
+    end,
+})
+
+SelectorsTab:CreateColorSelection({
+    Title = "Color Selection",
+    Subtitle = "CreateColorSelection card",
+    PerRow = 4,
+    Options = {
+        {Label = "Crimson", Color = Color3.fromRGB(255, 90, 90)},
+        {Label = "Amber", Color = Color3.fromRGB(255, 190, 90)},
+        {Label = "Mint", Color = Color3.fromRGB(90, 235, 155)},
+        {Label = "Sky", Color = Color3.fromRGB(100, 200, 255)},
+    },
     Callback = function(color, label)
-        local finalColor = color
-        local finalLabel = label
-
-        if type(color) == "table" then
-            finalColor = color.Color or color.Value or Color3.fromRGB(100, 255, 160)
-            finalLabel = color.Label or finalLabel
+        if flatColorCard then
+            flatColorCard:Set(color)
         end
-
-        if typeof(finalColor) ~= "Color3" then
-            finalColor = Color3.fromRGB(100, 255, 160)
-        end
-
-        Lighting.ColorShift_Bottom = finalColor
-        notify("Palette", tostring(finalLabel or "Selected"))
+        notify("ColorSelection", tostring(label), 1.4)
     end,
 })
 
-CameraTab:CreateGradientSelector({
-    Title = "Gradient Builder",
-    Subtitle = "Gradient dropdown editor with live preview and channel controls",
-})
-
-TeleportTab:CreateTitle({ Label = "Teleport Options" })
-
-local playerList = getPlayerNames()
-selectedPlayer = playerList[1]
-
-TeleportTab:CreateDropdown({
-    Title = "Player to Teleport To",
-    Subtitle = "Select a player",
-    Options = playerList,
-    Default = playerList[1],
-    Callback = function(name)
-        selectedPlayer = name
-    end,
-})
-
-TeleportTab:CreateButton({
-    Title = "Teleport to Player",
-    Subtitle = "Uses dropdown selection",
-    RequireCooldown = true,
-    CooldownDuration = 2,
-    Callback = function()
-        local target = Players:FindFirstChild(selectedPlayer)
-        local character = getCharacter()
-        if target and target.Character and character then
-            character:PivotTo(target.Character:GetPivot())
+SelectorsTab:CreateGradientSelector({
+    Title = "Gradient Selector",
+    Subtitle = "CreateGradientSelector card",
+    DefaultA = Color3.fromRGB(100, 255, 160),
+    DefaultB = Color3.fromRGB(90, 170, 255),
+    DefaultRotation = 90,
+    Callback = function(gradient)
+        if gradient and gradient.Rotation then
+            setStatus(runtimeStatus, "Gradient", math.clamp(gradient.Rotation / 3.6, 0, 100))
         end
     end,
 })
 
-TeleportTab:CreateButton({
-    Title = "Teleport to Random Player",
-    Subtitle = "Excludes yourself",
-    RequireCooldown = true,
-    CooldownDuration = 3,
-    Callback = function()
-        local valid = {}
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                table.insert(valid, player)
-            end
-        end
-        if #valid > 0 then
-            local pick = valid[math.random(1, #valid)]
-            local character = getCharacter()
-            if pick.Character and character then
-                character:PivotTo(pick.Character:GetPivot())
-            end
-        end
-    end,
-})
-
-TeleportTab:CreateImageButton({
-    Title = "Save Current Position",
-    Subtitle = "ImageButton card",
-    Image = "rbxassetid://7733960981",
-    Callback = function()
-        local root = getRoot()
-        if root then
-            savedPosition = root.CFrame
-            notify("Position Saved", "Use IconSelection to return")
-        end
-    end,
-})
-
-TeleportTab:CreateIconSelection({
-    Title = "Teleport Actions",
-    Subtitle = "IconSelection card",
+SelectorsTab:CreateIconSelection({
+    Title = "Icon Selection",
+    Subtitle = "CreateIconSelection card",
+    PerRow = 4,
     Options = {
+        {Label = "Alpha", Value = "alpha", Image = placeholderImage},
+        {Label = "Beta", Value = "beta", Image = placeholderImage},
+        {Label = "Gamma", Value = "gamma", Image = placeholderImage},
+        {Label = "Delta", Value = "delta", Image = placeholderImage},
+    },
+    Callback = function(value)
+        notify("IconSelection", tostring(value), 1.4)
+    end,
+})
+
+AdvancedTab:CreateTitle({Label = "Legacy / Advanced Cards"})
+
+AdvancedTab:CreateParagraph({
+    Title = "Legacy Surface",
+    Content = "This tab rounds out the older core cards that were not in the roadmap-only demo: stepper, dropdowns, grouped presets, toggle dropdowns, image buttons, knob sliders, and repeat toggles.",
+})
+
+AdvancedTab:CreateDivider({Label = "Legacy Controls"})
+
+local legacyValueLabel = AdvancedTab:CreateLabel({
+    Id = "legacy_value",
+    Title = "Legacy Value",
+    Subtitle = "Dropdown / stepper mirror",
+    Value = "Idle",
+})
+
+AdvancedTab:CreateStepper({
+    Title = "Stepper",
+    Subtitle = "CreateStepper card",
+    Default = 4,
+    Min = 0,
+    Max = 12,
+    Increment = 2,
+    Callback = function(value)
+        legacyValueLabel:Set("Step " .. tostring(value))
+        syncOverview(math.clamp(value * 8, 0, 100), "Stepper")
+    end,
+})
+
+AdvancedTab:CreateDropdown({
+    Title = "Dropdown",
+    Subtitle = "CreateDropdown card",
+    Options = {
+        {Label = "Overview", Value = "Overview"},
+        {Label = "Rules", Value = "Rules"},
+        {Label = "System", Value = "System"},
+    },
+    Callback = function(value)
+        legacyValueLabel:Set(tostring(value))
+        Window:BringToCard({Tab = tostring(value)})
+    end,
+})
+
+AdvancedTab:CreateGroupSelection({
+    Title = "Group Selection",
+    Subtitle = "CreateGroupSelection card",
+    Groups = {
+        Movement = {"Walk", "Sprint"},
+        Modes = {"Build", "Inspect"},
+    },
+    Callback = function(value)
+        notify("GroupSelection", tostring(value), 1.4)
+    end,
+})
+
+AdvancedTab:CreateToggleDropdown({
+    Title = "Toggle Dropdown",
+    Subtitle = "CreateToggleDropdown card",
+    Options = {
+        {Label = "Particles", Default = true},
+        {Label = "Ambient", Default = false},
+        {Label = "PostFX", Default = true},
+    },
+    Callback = function(state)
+        local enabledCount = 0
+        for _, enabled in pairs(state or {}) do
+            if enabled then
+                enabledCount += 1
+            end
+        end
+        legacyValueLabel:Set(tostring(enabledCount) .. " enabled")
+    end,
+})
+
+AdvancedTab:CreateImageButton({
+    Title = "Image Button",
+    Subtitle = "CreateImageButton card",
+    Image = placeholderImage,
+    Callback = function()
+        setStatus(runtimeStatus, "Image", 68)
+        notify("ImageButton", "pressed", 1.3)
+    end,
+})
+
+AdvancedTab:CreateKnobSlider({
+    Title = "Knob Slider",
+    Subtitle = "CreateKnobSlider card",
+    Knobs = {
         {
-            Label = "Spawn",
-            Value = "spawn",
-            Image = "rbxassetid://6031094678",
+            Label = "Brightness",
+            Min = 0,
+            Max = 6,
+            Default = 2,
+            Callback = function(value)
+                Lighting.Brightness = value
+            end,
         },
         {
-            Label = "Saved",
-            Value = "saved",
-            Image = "rbxassetid://6031280882",
-        },
-        {
-            Label = "Above",
-            Value = "above",
-            Image = "rbxassetid://6034818372",
+            Label = "FOV",
+            Min = 40,
+            Max = 120,
+            Default = 70,
+            Callback = function(value)
+                local camera = getCamera()
+                if camera then
+                    camera.FieldOfView = value
+                end
+            end,
         },
     },
-    Callback = function(choice)
-        local root = getRoot()
-        if not root then
-            return
-        end
-        if choice == "spawn" then
-            local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation")
-            if spawn then
-                getCharacter():PivotTo(spawn.CFrame + Vector3.new(0, 4, 0))
-            end
-        elseif choice == "saved" then
-            if savedPosition then
-                getCharacter():PivotTo(savedPosition)
-            end
-        elseif choice == "above" then
-            getCharacter():PivotTo(root.CFrame + Vector3.new(0, 25, 0))
+    Callback = function(values)
+        if values and values[1] and values[2] then
+            legacyValueLabel:Set("B " .. tostring(round(values[1])) .. " | FOV " .. tostring(round(values[2])))
         end
     end,
 })
 
-RulesTab:CreateTitle({ Label = "Rule Demos" })
+AdvancedTab:CreateRepeatToggle({
+    Title = "Repeat Toggle",
+    Subtitle = "CreateRepeatToggle card",
+    Interval = 1.2,
+    Callback = function(pulseCount)
+        local nextValue = ((pulseCount * 13) % 100)
+        syncOverview(nextValue, "Repeat " .. tostring(pulseCount))
+    end,
+    ToggleCallback = function(state)
+        notify("RepeatToggle", state and "running" or "stopped", 1.4)
+    end,
+})
+
+RulesTab:CreateTitle({Label = "Rule Coverage"})
 
 RulesTab:CreateParagraph({
     Title = "How To Test",
-    Content = "This tab keeps the rule demos in one place. Try them top to bottom: grant permission, toggle master enable, then test the gated and combo actions.",
-})
-
-RulesTab:CreateDivider({ Label = "State + Linking" })
-
-RulesTab:CreateToggle({
-    Id = "master_enable",
-    Title = "Master Enable",
-    Subtitle = "BindValue + RequireDependency anchor",
-    Default = false,
-    Rules = {
-        BindValue = { "master_mirror" },
-    },
-})
-
-RulesTab:CreateLabel({
-    Id = "master_mirror",
-    Title = "Master Mirror",
-    Subtitle = "Receives BindValue updates",
-    Value = false,
-})
-
-RulesTab:CreateLabel({
-    Id = "rules_permission_live",
-    Title = "Live Permission",
-    Subtitle = "RequireUpdate watches the granted level",
-    Value = Window:GetPermissionLevel(),
-    Rules = {
-        RequireUpdate = function(state, obj)
-            state._lastRulePermissionTick = state._lastRulePermissionTick or 0
-            if os.clock() - state._lastRulePermissionTick >= 0.25 then
-                state._lastRulePermissionTick = os.clock()
-                obj:Set(state.permission)
-            end
-        end,
-    },
+    Content = "Start by granting permission, then work downward through validation, visibility, dependency, hold, double-click, debounce, region, key, ping, and click-counter actions. This tab now mixes older and newer rule hooks together.",
 })
 
 RulesTab:CreateInput({
-    Id = "trimmed_input",
-    Title = "Trim Space Input",
-    Subtitle = "TrimSpace + BindValue",
-    Placeholder = "  spaced text  ",
-    MaxLength = 18,
-    Default = "  beta  ",
-    Rules = {
-        TrimSpace = true,
-        BindValue = { "trimmed_mirror" },
-    },
-})
-
-RulesTab:CreateLabel({
-    Id = "trimmed_mirror",
-    Title = "Trim Mirror",
-    Subtitle = "Shows the sanitized text",
-    Value = "beta",
-})
-
-RulesTab:CreateDivider({ Label = "Input Rules" })
-
-RulesTab:CreateInput({
-    Title = "Grant Permission Level",
+    Id = "grant_permission",
+    Title = "Grant Permission",
     Subtitle = "OnlyNumber + OnlyPositive + GrantPermission",
-    Placeholder = "Type 0, 1, 2, 3...",
+    Placeholder = "0 / 1 / 2 / 3",
     MaxLength = 2,
     Default = "0",
     Rules = {
@@ -658,246 +936,328 @@ RulesTab:CreateInput({
     },
 })
 
-RulesTab:CreateInput({
-    Title = "Numeric Only",
-    Subtitle = "OnlyNumber",
-    Placeholder = "12345",
-    MaxLength = 8,
+RulesTab:CreateLabel({
+    Id = "blurred_secret",
+    Title = "Permission-Blurred Secret",
+    Subtitle = "PermissionBlur = 2",
+    Value = "Admin tools unlocked",
     Rules = {
-        OnlyNumber = true,
+        PermissionBlur = 2,
     },
 })
 
-RulesTab:CreateInput({
-    Title = "Letters Only",
-    Subtitle = "OnlyCharacter",
-    Placeholder = "letters only",
-    MaxLength = 12,
-    Rules = {
-        OnlyCharacter = true,
-    },
+RulesTab:CreateToggle({
+    Id = "advanced_visible",
+    Title = "Advanced Visibility",
+    Subtitle = "Controls RequireCardVisible cards",
+    Default = false,
 })
-
-RulesTab:CreateInput({
-    Title = "Positive Only",
-    Subtitle = "OnlyNumber + OnlyPositive",
-    Placeholder = "25",
-    MaxLength = 6,
-    Rules = {
-        OnlyNumber = true,
-        OnlyPositive = true,
-    },
-})
-
-RulesTab:CreateInput({
-    Title = "Negative Only",
-    Subtitle = "OnlyNumber + OnlyNegative",
-    Placeholder = "-10",
-    MaxLength = 6,
-    Rules = {
-        OnlyNumber = true,
-        OnlyNegative = true,
-    },
-})
-
-RulesTab:CreateInput({
-    Title = "Validation Pattern",
-    Subtitle = "RequireValidation for AAA-111 style",
-    Placeholder = "ABC-123",
-    MaxLength = 7,
-    Rules = {
-        RequireValidation = "^[A-Z][A-Z][A-Z]%-%d%d%d$",
-    },
-})
-
-RulesTab:CreateInput({
-    Title = "Command Input",
-    Subtitle = "CommandInput + TrimSpace(false)",
-    Placeholder = "help / bright 3 / fov 80 / speed 20",
-    MaxLength = 24,
-    Rules = {
-        CommandInput = true,
-        TrimSpace = false,
-    },
-})
-
-RulesTab:CreateDivider({ Label = "Action Rules" })
 
 RulesTab:CreateButton({
-    Title = "Delayed Action",
-    Subtitle = "Delay = 1.5 seconds",
+    Title = "Visible Only While Toggle Is On",
+    Subtitle = "RequireCardVisible demo",
     Rules = {
-        Delay = 1.5,
+        RequireCardVisible = {Id = "advanced_visible", Equals = true},
     },
     Callback = function()
-        notify("Delay", "Executed after 1.5 seconds")
+        notify("RequireCardVisible", "The toggle was on", 1.6)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "Hold Action",
-    Subtitle = "RuleGroup = SafetyAction",
+    Title = "Hidden Until Permission 2",
+    Subtitle = "HiddenCard demo",
+    Rules = {
+        HiddenCard = function(state)
+            return state.permission >= 2
+        end,
+    },
+    Callback = function()
+        notify("HiddenCard", "Permission 2 unlocked this card", 1.6)
+    end,
+})
+
+RulesTab:CreateSlider({
+    Id = "randomized_slider",
+    Title = "Randomized Slider",
+    Subtitle = "RandomizeValue + Transition",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Rules = {
+        RandomizeValue = {Range = 8},
+        Transition = 0.18,
+    },
+    Callback = function(value)
+        setStatus(runtimeStatus, "Randomized", value)
+    end,
+})
+
+RulesTab:CreateButton({
+    Title = "Require Shift Key",
+    Subtitle = "RequireKey = LeftShift",
+    Rules = {
+        RequireKey = Enum.KeyCode.LeftShift,
+    },
+    Callback = function()
+        notify("RequireKey", "Shift was held", 1.6)
+    end,
+})
+
+RulesTab:CreateButton({
+    Title = "Click Counter Demo",
+    Subtitle = "ClickCounter cycles through 3 callbacks",
+    Callback = function()
+    end,
+    Rules = {
+        ClickCounter = {
+            ResetAfter = 3,
+            [1] = function()
+                notify("ClickCounter", "First click branch", 1.5)
+            end,
+            [2] = function()
+                notify("ClickCounter", "Second click branch", 1.5)
+            end,
+            [3] = function()
+                notify("ClickCounter", "Third click branch", 1.5)
+            end,
+        },
+    },
+})
+
+regionLabel = RulesTab:CreateLabel({
+    Id = "region_distance",
+    Title = "Region Distance",
+    Subtitle = "Used by RequireRegion demo",
+    Value = "No anchor",
+    Rules = {
+        RequireUpdate = function(state, obj)
+            state._regionTick = state._regionTick or 0
+            if os.clock() - state._regionTick >= 0.3 then
+                state._regionTick = os.clock()
+                local root = getRoot()
+                if not demoRegionCenter or not root then
+                    obj:Set("No anchor")
+                else
+                    obj:Set(tostring(round((root.Position - demoRegionCenter).Magnitude)) .. " studs")
+                end
+            end
+        end,
+    },
+})
+
+RulesTab:CreateButton({
+    Title = "Set Region Anchor",
+    Subtitle = "Stores your current root position",
+    Callback = function()
+        local root = getRoot()
+        if root then
+            demoRegionCenter = root.Position
+            updateRuntimeTable()
+            notify("RequireRegion", "Anchor saved at current position", 1.8)
+        end
+    end,
+})
+
+RulesTab:CreateButton({
+    Title = "Region Locked Action",
+    Subtitle = "RequireRegion within 40 studs of the anchor",
+    Rules = {
+        RequireRegion = function(position)
+            return demoRegionCenter and ((position - demoRegionCenter).Magnitude <= 40)
+        end,
+    },
+    Callback = function()
+        notify("RequireRegion", "You are inside the anchored region", 1.8)
+    end,
+})
+
+RulesTab:CreateButton({
+    Title = "Ping Gate",
+    Subtitle = "RequirePing <= 250ms",
+    Rules = {
+        RequirePing = 250,
+    },
+    Callback = function()
+        notify("RequirePing", "Ping check passed", 1.8)
+    end,
+})
+
+RulesTab:CreateButton({
+    Title = "Hold Safety Action",
+    Subtitle = "Older hold rule shown with the newer sweep fix",
     RuleGroup = "SafetyAction",
     Callback = function()
-        notify("Hold Action", "Held long enough and passed delay")
+        notify("SafetyAction", "Hold + delay completed", 1.8)
     end,
 })
 
+RulesTab:CreateDivider({Label = "Action Rules"})
+
+RulesTab:CreateToggle({
+    Id = "rule_enable_switch",
+    Title = "AutoDisable Switch",
+    Subtitle = "Turn this off to disable the next action",
+    Default = true,
+})
+
 RulesTab:CreateButton({
-    Title = "Double Click Action",
-    Subtitle = "RequireDoubleClick only",
+    Title = "AutoDisable Action",
+    Subtitle = "AutoDisable while switch is off",
     Rules = {
-        RequireDoubleClick = 0.75,
+        AutoDisable = function(state)
+            return not state.values.rule_enable_switch
+        end,
     },
     Callback = function()
-        notify("Double Click", "You completed the second click")
+        notify("AutoDisable", "Card was enabled", 1.6)
     end,
 })
 
+RulesTab:CreateToggle({
+    Id = "dependency_toggle",
+    Title = "Dependency Toggle",
+    Subtitle = "Used by RequireDependency",
+    Default = false,
+})
+
 RulesTab:CreateButton({
-    Title = "Debounced Action",
-    Subtitle = "Debounce blocks rapid repeats",
+    Title = "Dependency Action",
+    Subtitle = "RequireDependency = dependency_toggle",
     Rules = {
-        Debounce = { Count = 1, Window = 3 },
+        RequireDependency = {Id = "dependency_toggle", Equals = true},
     },
     Callback = function()
-        notify("Debounce", "Wait 3 seconds before pressing again")
+        notify("RequireDependency", "Dependency was satisfied", 1.6)
     end,
 })
 
+RulesTab:CreateToggle({
+    Id = "dynamic_mode",
+    Title = "Dynamic Callback Mode",
+    Subtitle = "Toggles the DynamicCallback branch",
+    Default = false,
+})
+
 RulesTab:CreateButton({
-    Title = "Permission Gate",
+    Title = "Dynamic Callback",
+    Subtitle = "DynamicCallback changes the action at runtime",
+    Rules = {
+        DynamicCallback = function(state)
+            if state.values.dynamic_mode then
+                return function()
+                    notify("DynamicCallback", "Mode ON branch", 1.6)
+                    setStatus(runtimeStatus, "Dynamic On", 92)
+                end
+            end
+            return function()
+                notify("DynamicCallback", "Mode OFF branch", 1.6)
+                setStatus(runtimeStatus, "Dynamic Off", 28)
+            end
+        end,
+    },
+})
+
+RulesTab:CreateButton({
+    Title = "Permission 2 Action",
     Subtitle = "RequirePermission = 2",
     Rules = {
         RequirePermission = 2,
     },
     Callback = function()
-        notify("Permission Gate", "Permission check passed")
+        notify("RequirePermission", "Permission gate passed", 1.6)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "Dependency Gate",
-    Subtitle = "RequireDependency on Master Enable",
+    Title = "Confirm + Delay",
+    Subtitle = "RequireConfirmation + Delay",
     Rules = {
-        RequireDependency = { Id = "master_enable", Equals = true },
+        RequireConfirmation = true,
+        Delay = 0.45,
     },
     Callback = function()
-        notify("Dependency Gate", "Master enable was true")
+        notify("Delay", "Delayed action completed", 1.6)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "Running State Action",
-    Subtitle = "RequireState demo",
+    Title = "Double Click Action",
+    Subtitle = "RequireDoubleClick = 0.45",
     Rules = {
-        RequireState = {
-            Enum.HumanoidStateType.Running,
-            Enum.HumanoidStateType.RunningNoPhysics,
-        },
+        RequireDoubleClick = 0.45,
     },
     Callback = function()
-        notify("State Rule", "You were moving when this fired")
+        notify("RequireDoubleClick", "Double click confirmed", 1.6)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "Auto Disabled Button",
-    Subtitle = "AutoDisable until master toggle is on",
+    Title = "Debounce Action",
+    Subtitle = "Debounce = 1.5",
     Rules = {
-        AutoDisable = function(state)
-            return not state.values["master_enable"]
-        end,
+        Debounce = 1.5,
     },
     Callback = function()
-        notify("AutoDisable", "Master toggle was enabled")
+        notify("Debounce", "Accepted click", 1.2)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "One-Time Locked Action",
-    Subtitle = "Lock + RequireConfirmation",
-    RequireConfirmation = true,
-    ConfirmTitle = "One-Time Action",
-    ConfirmSubtitle = "This should only work once.",
+    Title = "Lock After First Click",
+    Subtitle = "Lock rule demo",
     Rules = {
         Lock = true,
     },
     Callback = function()
-        notify("Locked Action", "This card should now be locked")
+        notify("Lock", "This card is now locked", 1.6)
     end,
 })
 
 RulesTab:CreateButton({
-    Title = "Dynamic Callback",
-    Subtitle = "Callback changes by permission level",
+    Title = "Move To Trigger",
+    Subtitle = "RequireState via movement function",
     Rules = {
-        DynamicCallback = function(state)
-            if state.permission >= 2 then
-                return function()
-                    notify("Dynamic Callback", "Admin branch executed")
-                end
-            end
-            return function()
-                notify("Dynamic Callback", "User branch executed")
-            end
+        RequireState = function()
+            local humanoid = getHumanoid()
+            return humanoid and humanoid.MoveDirection.Magnitude > 0
         end,
     },
     Callback = function()
+        notify("RequireState", "Movement requirement passed", 1.6)
     end,
 })
 
-RulesTab:CreateDivider({ Label = "Rule Groups + Combos" })
+SystemTab:CreateTitle({Label = "System / Search / Inputs"})
 
-RulesTab:CreateButton({
-    Title = "Admin Gate Group",
-    Subtitle = "RuleGroup = AdminGate",
-    RuleGroup = "AdminGate",
-    Callback = function()
-        notify("Admin Gate", "AdminGate rule group passed")
-    end,
-})
-
-RulesTab:CreateButton({
-    Title = "Full Combo Action",
-    Subtitle = "Permission + dependency + hold + double-click + delay + debounce",
-    RuleGroup = { "AdminGate", "SafetyAction", "DependencyGate" },
-    Rules = {
-        RequireDoubleClick = true,
-        Debounce = { Count = 1, Window = 3 },
-    },
-    Callback = function()
-        notify("Full Combo", "All combo rules passed successfully", 3)
-    end,
-})
-
-SystemTab:CreateTitle({ Label = "System / Beta Inputs" })
-
-SystemTab:CreateKeybind({
+notifyKeybind = SystemTab:CreateKeybind({
     Title = "Custom Notify Key",
-    Subtitle = "Keybind card",
+    Subtitle = "Rebinding this key updates the demo hotkey",
     Default = Enum.KeyCode.V,
     Callback = function(keyCode)
-        notify("Custom Keybound", tostring(keyCode))
+        notify("Keybind", "Bound to " .. tostring(keyCode), 1.4)
+        setStatus(runtimeStatus, "Rebound", 88)
     end,
 })
 
-SystemTab:CreateInput({
-    Title = "Quick Note",
-    Subtitle = "Standard Input card",
-    Placeholder = "type any note here",
-    MaxLength = 24,
-    Default = "CrystalDK Beta",
-})
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then
+        return
+    end
+    if notifyKeybind and notifyKeybind.Get and input.KeyCode == notifyKeybind:Get() then
+        notify("Hotkey", tostring(input.KeyCode), 1.4)
+        setStatus(runtimeStatus, "Hotkey", 88)
+    end
+end)
 
 SystemTab:CreateMinimizeKeyinput({
     Title = "Minimize Key",
-    Subtitle = "Changes the quick-select key",
+    Subtitle = "Changes the quick-selection key",
 })
 
 SystemTab:CreateToggleUIKeyinput({
     Title = "Toggle UI Key",
-    Subtitle = "Changes the main GUI toggle key",
+    Subtitle = "Changes the main toggle key",
 })
 
 if SystemTab.CreateThemeCycleKeyinput then
@@ -905,34 +1265,81 @@ if SystemTab.CreateThemeCycleKeyinput then
         Title = "Theme Cycle Key",
         Subtitle = "Changes the theme-cycle key",
     })
-elseif SystemTab.CreateThemeCycleKeyinputCan then
-    SystemTab:CreateThemeCycleKeyinputCan({
-        Title = "Theme Cycle Key",
-        Subtitle = "Changes the theme-cycle key",
-    })
 end
 
-SystemTab:CreateButton({
-    Title = "Cycle Theme Preview",
-    Subtitle = "Uses Window:CycleTheme() to preview the polished themes",
-    Callback = function()
-        if Window and Window.CycleTheme then
-            Window:CycleTheme()
-        end
+SystemTab:CreateSlider({
+    Title = "Blur Intensity",
+    Subtitle = "Uses Window:SetBlurIntensity()",
+    Min = 0,
+    Max = 32,
+    Default = blurAmount,
+    Callback = function(value)
+        blurAmount = value
+        Window:SetBlurIntensity(value)
     end,
 })
 
 SystemTab:CreateButton({
-    Title = "Show Session / User IDs",
-    Subtitle = "Notification + console output demo",
+    Title = "Focus Search",
+    Subtitle = "Uses Window:FocusSearch()",
     Callback = function()
-        notify("Session", Session_ID, 3)
-        print("Session ID: " .. Session_ID)
-        print("User Script ID: " .. User_Script_ID)
+        Window:FocusSearch()
     end,
 })
 
-notify("CrystalDK Beta", "Full demo script loaded", 3)
+SystemTab:CreateButton({
+    Title = "Cycle Theme",
+    Subtitle = "Uses Window:CycleTheme()",
+    Callback = function()
+        Window:CycleTheme()
+    end,
+})
+
+SystemTab:CreateButton({
+    Title = "Bring To Rules",
+    Subtitle = "Uses Window:BringToCard() directly",
+    Callback = function()
+        Window:BringToCard({Tab = "Rules"})
+    end,
+})
+
+SystemTab:CreateButton({
+    Title = "Send Notification",
+    Subtitle = "Uses Window:SendNotification() directly",
+    Callback = function()
+        Window:SendNotification({
+            Title = "CrystalDK",
+            Subtitle = "Direct window notification",
+            Duration = 1.8,
+        })
+    end,
+})
+
+SystemTab:CreateParagraph({
+    Title = "Testing Notes",
+    Content = "Use the three right-side controls on cards to favourite them, add them to quickselect, or reorder them. You can still scroll the tab row and use search normally.",
+})
+
+Lighting.Brightness = 2
+Lighting.ClockTime = 14
+local camera = getCamera()
+if camera then
+    camera.FieldOfView = 70
+end
+
+updateRuntimeTable()
+syncOverview(Window:GetValue("demo_progress") or 36, "Ready")
+
+local runtimeRefreshAccumulator = 0
+RunService.Heartbeat:Connect(function(dt)
+    runtimeRefreshAccumulator += dt
+    if runtimeTable and runtimeRefreshAccumulator >= 0.25 then
+        runtimeRefreshAccumulator = 0
+        updateRuntimeTable()
+    end
+end)
+
+notify("CrystalDK Beta", "2.2.0 demo loaded", 3)
 
 print("Session ID: " .. Session_ID)
 print("User Script ID: " .. User_Script_ID)
