@@ -1,4 +1,4 @@
-CrystalDK Beta 2.2.0 API
+CrystalDK Beta 2.2.1 API
 
 Quick Start
 
@@ -15,6 +15,9 @@ local Window = CrystalDK:CreateWindow({
     MinimizeKey = Enum.KeyCode.T,
     ThemeCycleKey = Enum.KeyCode.L,
     BlurIntensity = 18,
+    OpenFieldOfView = 35,
+    OpenZoomDistance = 16,
+    CameraTweenTime = 0.28,
 })
 
 local Main = Window:CreateTab("Main")
@@ -32,6 +35,8 @@ Main:CreateButton({
     end,
 })
 ```
+
+The library handles the blur, bloom, key screen, and GUI camera tween internally. Consumer scripts only need to create the window, tabs, cards, and callbacks.
 
 Common card fields
 
@@ -96,7 +101,7 @@ Cards
 `CreateCircleProgressBar({ Id, Title, Subtitle, Default, ProgressBarHeight, Callback, Rules })`
 - Purpose: outside-mounted arc progress card.
 - Methods: `Set(percent, instant?)`, `Get()`.
-- Notes: in the current LIB the arc is mounted outside the left side of the card.
+- Notes: the arc is mounted outside the left side of the card in a floating overlay layer, so it can overlap neighbouring cards without scroll-frame clipping.
 
 `CreateDropdown({ Id, Title, Subtitle, Options, Default, Callback, Rules })`
 - Purpose: single-select dropdown.
@@ -326,7 +331,7 @@ State / visibility / access rules
 - a table with `Level`, `Value`, or `Permission`
 
 `PermissionBlur`
-- Visual permission mask overlay.
+- Fully-covered permission mask overlay.
 - Number = required permission level.
 - This hides the card visually until that permission is granted.
 
@@ -399,12 +404,20 @@ Visual rules
 - Number form sets the tween duration.
 - Truthy non-number falls back to a short default transition.
 
+`CardAccent`
+- Adds a full-card gradient tint to the card shell and shifts the stroke toward the accent color.
+- Accepted forms:
+- `{ Color3, "tleft" | "tright" | "bleft" | "bright", intensity, onlyOnHover }`
+- `{ Color = Color3, Side = "tright", Intensity = 0.9, OnlyOnHover = true }`
+- `Side` chooses which corner/edge the gradient blooms from.
+- If no color is supplied, the current theme accent color is used.
+
 In-Depth Scenarios
 
 1. Live mirror input
 
 ```lua
-local label = Tab:CreateLabel({
+Tab:CreateLabel({
     Id = "mirror_label",
     Title = "Mirror",
     Value = "--",
@@ -502,13 +515,14 @@ Tab:CreateButton({
 6. Live status card
 
 ```lua
-local status = Tab:CreateStatusIndicator({
+Tab:CreateStatusIndicator({
+    Id = "service_status",
     Title = "Service Status",
     Default = "Ready",
 })
 
-status:SetStatus("Syncing", 45)
-status:SetStatus("Done", 100)
+Window:SetCardStatus("service_status", "Syncing", 45)
+Window:SetCardStatus("service_status", "Done", 100)
 ```
 
 Window Settings
@@ -523,6 +537,10 @@ Supported settings used by the current LIB:
 - `MinimizeKey`: default quick-select key. Default `T`.
 - `ThemeCycleKey`: default theme key. Default `L`.
 - `BlurIntensity`: blur size when the main GUI is open.
+- `CameraTweenEnabled`: set `false` to disable the GUI camera tween.
+- `OpenFieldOfView`: target FOV while the main GUI is open. Default `35`.
+- `OpenZoomDistance`: target zoom distance while the main GUI is open. Default `16`.
+- `CameraTweenTime`: open / close tween duration for the GUI camera presentation.
 - `Commands`: global command map for `CommandInput`.
 - `GlobalCardRules`: rules merged into every card.
 - `RuleGroups`: named reusable rule groups.
@@ -588,6 +606,18 @@ Window / Misc API
 `Window:GetValue(id)`
 - Returns the current stored value for a card id.
 
+`Window:GetCard(id)`
+- Returns the created card object for a card id when you need the raw object.
+
+`Window:SetCard(id, ...)`
+- Calls `:Set(...)` or `:SetValue(...)` on a card by id.
+
+`Window:SetCardStatus(id, status, percent)`
+- Calls `:SetStatus(status, percent)` on a card by id.
+
+`Window:CallCard(id, methodName, ...)`
+- Calls any card method by id and returns its result.
+
 `Window:SetPermissionLevel(level)`
 - Sets current permission and refreshes permission masks / layout.
 
@@ -624,8 +654,11 @@ Window / Misc API
 `Window:RegisterCommand({ commandA = fnA, commandB = fnB })`
 - Registers many commands at once.
 
+`Window:Tab(name)`
+- Cached tab accessor. Creates the tab the first time, then returns the same tab object on later calls.
+
 `Window:CreateTab(name)`
-- Creates a tab and returns the tab object.
+- Creates a tab and returns the cached tab object.
 
 `Window:LoadConfiguration()`
 - Present in the API but currently a stub / no-op in this build.
@@ -645,8 +678,8 @@ Window / Misc API
 Notes
 
 - The right side of each card now has three built-in actions: favourite, quickselect, reorder.
-- `PermissionBlur` is a visual lock; `RequirePermission` is an interaction lock.
+- `PermissionBlur` keeps the card shell visible but hides the card contents behind the lock overlay; `RequirePermission` is an interaction lock.
 - `GlobalCardRules` and `RuleGroups` are merged before direct card fields.
 - `CommandInput` checks `Window:RegisterCommand`, `cfg.Commands`, and `rules.Commands`.
-- Search, favourites, quickselect, and reorder behavior are built into the LIB; you do not need to wire them manually.
-- `LoadConfiguration()` exists but is not implemented in the current `Main.txt`.
+- Search, favourites, quickselect, and reorder behavior are built into the LIB.
+- `LoadConfiguration()` exists but is not implemented in the current version.
