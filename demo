@@ -1,10 +1,10 @@
 local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"))()
 
 --[[
- CrystalDK Version Beta-2.2.0 Demo
+ CrystalDK Version Beta-2.2.1 Demo
 
  This demo now covers the full public surface:
-  all cards, all core card rules, window helpers, key settings, and selection cards
+  all cards, all core card rules, window methods, key settings, and selection cards
 
  Y = Toggle GUI
  T = Toggle Quick Selection
@@ -21,33 +21,6 @@ local LocalPlayer = Players.LocalPlayer
 local function getCamera()
     return workspace.CurrentCamera
 end
-
-local Window
-local OverviewTab
-local CardsTab
-local InputsTab
-local SelectorsTab
-local AdvancedTab
-local RulesTab
-local SystemTab
-
-local runtimeStatus
-local demoProgress
-local demoCircle
-local suffixLabel
-local permissionLabel
-local pingLabel
-local closeCountLabel
-local regionLabel
-local resolvedPathLabel
-local flatColorCard
-local runtimeTable
-local runtimeGraph
-local sliderSelection
-local pathInput
-local notifyKeybind
-local getWindowPermission
-local getWindowSuffix
 
 local graphPoints = {18, 28, 34, 41, 37, 52}
 local closeCount = 0
@@ -99,64 +72,6 @@ local function readPingMs()
     return nil
 end
 
-local function notify(title, subtitle, duration)
-    if Window then
-        Window:SendNotification({
-            Title = title,
-            Subtitle = subtitle,
-            Duration = duration or 2,
-        })
-    end
-end
-
-local function setCardValue(card, value)
-    if card and type(card.Set) == "function" then
-        card:Set(value)
-    elseif card and type(card.SetValue) == "function" then
-        card:SetValue(value)
-    end
-end
-
-local function setStatus(card, status, percent)
-    if card and type(card.SetStatus) == "function" then
-        card:SetStatus(status, percent)
-    elseif card and type(card.Set) == "function" then
-        card:Set(status, percent)
-    end
-end
-
-local function updateRuntimeTable()
-    if not runtimeTable or not Window then
-        return
-    end
-
-    local root = getRoot()
-    local ping = readPingMs()
-    local distance = demoRegionCenter and root and round((root.Position - demoRegionCenter).Magnitude) or "No anchor"
-
-    runtimeTable:SetRows({
-        {Name = "Permission", Value = tostring(getWindowPermission())},
-        {Name = "Suffix", Value = tostring(getWindowSuffix() or "none")},
-        {Name = "Ping", Value = ping and (tostring(round(ping)) .. " ms") or "n/a"},
-        {Name = "Region Dist", Value = tostring(distance)},
-    })
-end
-
-local function syncOverview(value, labelText)
-    local nextValue = math.clamp(tonumber(value) or 0, 0, 100)
-    setCardValue(demoProgress, nextValue)
-    setCardValue(demoCircle, nextValue)
-    setStatus(runtimeStatus, labelText or "Running", nextValue)
-    table.insert(graphPoints, nextValue)
-    while #graphPoints > 12 do
-        table.remove(graphPoints, 1)
-    end
-    if runtimeGraph then
-        runtimeGraph:SetPoints(graphPoints)
-    end
-    updateRuntimeTable()
-end
-
 local function averageValues(values)
     local total = 0
     local count = 0
@@ -167,22 +82,10 @@ local function averageValues(values)
     return count > 0 and (total / count) or 0
 end
 
-getWindowPermission = function()
-    if Window and Window.GetPermissionLevel then
-        return Window:GetPermissionLevel()
-    end
-    return 0
-end
-
-getWindowSuffix = function()
-    if Window and Window.GetKeySuffix then
-        return Window:GetKeySuffix()
-    end
-    return nil
-end
+local Window
 
 Window = CrystalDK:CreateWindow({
-    Name = "CrystalDK Beta 2.2.0",
+    Name = "CrystalDK Beta 2.2.1",
     LoadingTitle = "CrystalDK Beta",
     LoadingSubtitle = "Cards + Rules Demo",
 
@@ -192,6 +95,9 @@ Window = CrystalDK:CreateWindow({
     MinimizeKey = Enum.KeyCode.T,
     ThemeCycleKey = Enum.KeyCode.L,
     BlurIntensity = blurAmount,
+    OpenFieldOfView = 35,
+    OpenZoomDistance = 16,
+    CameraTweenTime = 0.28,
 
     PermissionKey = function(rawKey, suffix, entry)
         if suffix == "developer" then
@@ -207,19 +113,37 @@ Window = CrystalDK:CreateWindow({
         simple = {
             Permission = 1,
             OnLoad = function()
-                notify("Profile", "simple profile loaded", 2)
+                if Window then
+                    Window:SendNotification({
+                        Title = "Profile",
+                        Subtitle = "simple profile loaded",
+                        Duration = 2,
+                    })
+                end
             end,
         },
         complex = {
             Permission = 2,
             OnLoad = function()
-                notify("Profile", "complex profile loaded", 2)
+                if Window then
+                    Window:SendNotification({
+                        Title = "Profile",
+                        Subtitle = "complex profile loaded",
+                        Duration = 2,
+                    })
+                end
             end,
         },
         developer = {
             Permission = 3,
             OnLoad = function()
-                notify("Profile", "developer profile loaded", 2)
+                if Window then
+                    Window:SendNotification({
+                        Title = "Profile",
+                        Subtitle = "developer profile loaded",
+                        Duration = 2,
+                    })
+                end
             end,
         },
     },
@@ -255,47 +179,59 @@ Window = CrystalDK:CreateWindow({
 Window:RegisterCommand({
     ping = function()
         local ping = readPingMs()
-        notify("Command", ping and (tostring(round(ping)) .. " ms") or "Ping unavailable", 1.6)
+        Window:SendNotification({
+            Title = "Command",
+            Subtitle = ping and (tostring(round(ping)) .. " ms") or "Ping unavailable",
+            Duration = 1.6,
+        })
     end,
     theme = function()
         Window:CycleTheme()
-        notify("Command", "Theme cycled", 1.6)
+        Window:SendNotification({
+            Title = "Command",
+            Subtitle = "Theme cycled",
+            Duration = 1.6,
+        })
     end,
     rules = function()
         Window:BringToCard({Tab = "Rules"})
     end,
     pulse = function(_, parts)
         local nextValue = tonumber(parts[2]) or math.random(12, 96)
-        syncOverview(nextValue, "Command Pulse")
+        nextValue = math.clamp(nextValue, 0, 100)
+        Window:SetCard("demo_progress", nextValue)
+        Window:SetCard("demo_circle", nextValue)
+        Window:SetCardStatus("runtime_status", "Command Pulse", nextValue)
+        table.insert(graphPoints, nextValue)
+        while #graphPoints > 12 do
+            table.remove(graphPoints, 1)
+        end
+        Window:CallCard("runtime_graph", "SetPoints", graphPoints)
     end,
 })
 
-OverviewTab = Window:CreateTab("Overview")
-CardsTab = Window:CreateTab("Cards")
-InputsTab = Window:CreateTab("Inputs")
-SelectorsTab = Window:CreateTab("Selectors")
-AdvancedTab = Window:CreateTab("Advanced")
-RulesTab = Window:CreateTab("Rules")
-SystemTab = Window:CreateTab("System")
+Window:Tab("Overview"):CreateTitle({Label = "Beta 2.2.1 Overview"})
 
-OverviewTab:CreateTitle({Label = "Beta 2.2.0 Overview"})
-
-OverviewTab:CreateBanner({
+Window:Tab("Overview"):CreateBanner({
     Title = "New Demo Surface",
     Subtitle = "Full card coverage, full rule coverage, updated shell behavior",
     Tint = Color3.fromRGB(10, 14, 24),
     TintTransparency = 0.22,
     Callback = function()
-        notify("Banner", "This demo is now focused on the 2.2.0 LIB surface", 2)
+        Window:SendNotification({
+            Title = "Banner",
+            Subtitle = "This demo is now focused on the 2.2.1 LIB surface",
+            Duration = 2,
+        })
     end,
 })
 
-OverviewTab:CreateParagraph({
+Window:Tab("Overview"):CreateParagraph({
     Title = "What This Demo Covers",
     Content = "This script demonstrates every active card constructor, the full core rule set, the centered tab carousel, quick-search helpers, and the updated status / progress presentation.",
 })
 
-suffixLabel = OverviewTab:CreateLabel({
+Window:Tab("Overview"):CreateLabel({
     Id = "suffix_profile",
     Title = "Loaded Suffix",
     Subtitle = "PermissionKey + SuffixProfiles demo",
@@ -305,29 +241,29 @@ suffixLabel = OverviewTab:CreateLabel({
             state._suffixTick = state._suffixTick or 0
             if os.clock() - state._suffixTick >= 0.25 then
                 state._suffixTick = os.clock()
-                obj:Set(getWindowSuffix() or "none")
+                obj:Set(Window:GetKeySuffix() or "none")
             end
         end,
     },
 })
 
-permissionLabel = OverviewTab:CreateLabel({
+Window:Tab("Overview"):CreateLabel({
     Id = "permission_live",
     Title = "Permission Level",
     Subtitle = "Live value from Window:GetPermissionLevel()",
-    Value = getWindowPermission(),
+    Value = Window:GetPermissionLevel(),
     Rules = {
         RequireUpdate = function(state, obj)
             state._permissionTick = state._permissionTick or 0
             if os.clock() - state._permissionTick >= 0.2 then
                 state._permissionTick = os.clock()
-                obj:Set(getWindowPermission())
+                obj:Set(Window:GetPermissionLevel())
             end
         end,
     },
 })
 
-pingLabel = OverviewTab:CreateLabel({
+Window:Tab("Overview"):CreateLabel({
     Id = "ping_live",
     Title = "Ping",
     Subtitle = "Live network ping for RequirePing demos",
@@ -344,7 +280,7 @@ pingLabel = OverviewTab:CreateLabel({
     },
 })
 
-closeCountLabel = OverviewTab:CreateLabel({
+Window:Tab("Overview"):CreateLabel({
     Id = "close_count",
     Title = "GUI Close Count",
     Subtitle = "OnClose rule demo",
@@ -363,14 +299,14 @@ closeCountLabel = OverviewTab:CreateLabel({
     },
 })
 
-demoProgress = OverviewTab:CreateProgressBar({
+Window:Tab("Overview"):CreateProgressBar({
     Id = "demo_progress",
     Title = "Demo Progress",
     Subtitle = "Standard progress bar",
     Default = 36,
 })
 
-demoCircle = OverviewTab:CreateCircleProgressBar({
+Window:Tab("Overview"):CreateCircleProgressBar({
     Id = "demo_circle",
     Title = "Circle Progress",
     Subtitle = "Arc sits outside the card and overlaps nearby space",
@@ -378,7 +314,7 @@ demoCircle = OverviewTab:CreateCircleProgressBar({
     ProgressBarHeight = 2,
 })
 
-runtimeStatus = OverviewTab:CreateStatusIndicator({
+Window:Tab("Overview"):CreateStatusIndicator({
     Id = "runtime_status",
     Title = "Runtime Status",
     Subtitle = "Gradient-driven StatusIndicator",
@@ -390,16 +326,23 @@ runtimeStatus = OverviewTab:CreateStatusIndicator({
     },
 })
 
-OverviewTab:CreateButton({
+Window:Tab("Overview"):CreateButton({
     Title = "Advance Overview",
     Subtitle = "Updates progress, circle progress, status, graph, and runtime table",
     Callback = function()
         local nextValue = math.min((Window:GetValue("demo_progress") or 36) + 9, 100)
-        syncOverview(nextValue, nextValue >= 100 and "Complete" or "Processing")
+        Window:SetCard("demo_progress", nextValue)
+        Window:SetCard("demo_circle", nextValue)
+        Window:SetCardStatus("runtime_status", nextValue >= 100 and "Complete" or "Processing", nextValue)
+        table.insert(graphPoints, nextValue)
+        while #graphPoints > 12 do
+            table.remove(graphPoints, 1)
+        end
+        Window:CallCard("runtime_graph", "SetPoints", graphPoints)
     end,
 })
 
-OverviewTab:CreateButton({
+Window:Tab("Overview"):CreateButton({
     Title = "Copy Session ID",
     Subtitle = "CopyValue card rule demo",
     Rules = {
@@ -408,22 +351,30 @@ OverviewTab:CreateButton({
         end,
     },
     Callback = function()
-        notify("CopyValue", "Session ID copied", 1.6)
+        Window:SendNotification({
+            Title = "CopyValue",
+            Subtitle = "Session ID copied",
+            Duration = 1.6,
+        })
     end,
 })
 
-OverviewTab:CreateButton({
+Window:Tab("Overview"):CreateButton({
     Title = "Bring To Runtime Table",
     Subtitle = "BringTo card rule demo",
     Rules = {
         BringTo = {Tab = "Cards", Id = "runtime_table"},
     },
     Callback = function()
-        notify("BringTo", "Jumping to the runtime table", 1.6)
+        Window:SendNotification({
+            Title = "BringTo",
+            Subtitle = "Jumping to the runtime table",
+            Duration = 1.6,
+        })
     end,
 })
 
-OverviewTab:CreateLinkParagraph({
+Window:Tab("Overview"):CreateLinkParagraph({
     Title = "Useful Links",
     Content = "These links use the new LinkParagraph card. In this demo they copy the URL so you can paste it wherever you need it.",
     Links = {
@@ -433,33 +384,33 @@ OverviewTab:CreateLinkParagraph({
     },
 })
 
-CardsTab:CreateTitle({Label = "Roadmap Card Demo"})
+Window:Tab("Cards"):CreateTitle({Label = "Roadmap Card Demo"})
 
-CardsTab:CreateBanner({
+Window:Tab("Cards"):CreateBanner({
     Title = "Roadmap Cards",
     Subtitle = "Banner, Color, PathInput, Table, LineGraph, SliderSelection, and CardGrid are shown below",
     Tint = Color3.fromRGB(14, 18, 30),
     TintTransparency = 0.26,
 })
 
-flatColorCard = CardsTab:CreateColor({
+Window:Tab("Cards"):CreateColor({
     Id = "flat_color",
     Title = "Flat Color",
     Subtitle = "CreateColor card",
     Default = demoColors[colorIndex],
 })
 
-CardsTab:CreateButton({
+Window:Tab("Cards"):CreateButton({
     Title = "Cycle Flat Color",
     Subtitle = "Updates CreateColor and status",
     Callback = function()
         colorIndex = (colorIndex % #demoColors) + 1
-        flatColorCard:Set(demoColors[colorIndex])
-        setStatus(runtimeStatus, "Palette", ((colorIndex - 1) / math.max(#demoColors - 1, 1)) * 100)
+        Window:SetCard("flat_color", demoColors[colorIndex])
+        Window:SetCardStatus("runtime_status", "Palette", ((colorIndex - 1) / math.max(#demoColors - 1, 1)) * 100)
     end,
 })
 
-pathInput = CardsTab:CreatePathInput({
+Window:Tab("Cards"):CreatePathInput({
     Id = "workspace_path",
     Title = "Workspace Path",
     Subtitle = "CreatePathInput card",
@@ -467,49 +418,66 @@ pathInput = CardsTab:CreatePathInput({
     Default = "game.Workspace",
 })
 
-resolvedPathLabel = CardsTab:CreateLabel({
+Window:Tab("Cards"):CreateLabel({
     Id = "path_result",
     Title = "Resolved Path",
     Subtitle = "Result from PathInput:GetResolved()",
     Value = "not resolved yet",
 })
 
-CardsTab:CreateButton({
+Window:Tab("Cards"):CreateButton({
     Title = "Resolve Path",
     Subtitle = "Finds the instance and reports the result",
     Callback = function()
-        local instance = pathInput:GetResolved()
+        local instance = Window:CallCard("workspace_path", "GetResolved")
         if instance then
-            resolvedPathLabel:Set(instance:GetFullName())
-            setStatus(runtimeStatus, "Resolved", 100)
+            Window:SetCard("path_result", instance:GetFullName())
+            Window:SetCardStatus("runtime_status", "Resolved", 100)
         else
-            resolvedPathLabel:Set("Path not found")
-            setStatus(runtimeStatus, "Missing", 12)
+            Window:SetCard("path_result", "Path not found")
+            Window:SetCardStatus("runtime_status", "Missing", 12)
         end
     end,
 })
 
-runtimeTable = CardsTab:CreateTable({
+Window:Tab("Cards"):CreateTable({
     Id = "runtime_table",
     Title = "Runtime Table",
     Subtitle = "CreateTable card",
     Columns = {"Name", "Value"},
     Rows = {
-        {Name = "Permission", Value = tostring(getWindowPermission())},
-        {Name = "Suffix", Value = tostring(getWindowSuffix() or "none")},
+        {Name = "Permission", Value = tostring(Window:GetPermissionLevel())},
+        {Name = "Suffix", Value = tostring(Window:GetKeySuffix() or "none")},
         {Name = "Ping", Value = "n/a"},
         {Name = "Region Dist", Value = "No anchor"},
     },
+    Rules = {
+        RequireUpdate = function(state, obj)
+            state._runtimeTableTick = state._runtimeTableTick or 0
+            if os.clock() - state._runtimeTableTick >= 0.25 then
+                state._runtimeTableTick = os.clock()
+                local root = getRoot()
+                local ping = readPingMs()
+                local distance = demoRegionCenter and root and round((root.Position - demoRegionCenter).Magnitude) or "No anchor"
+                obj:SetRows({
+                    {Name = "Permission", Value = tostring(state.permission or 0)},
+                    {Name = "Suffix", Value = tostring(state.suffix or "none")},
+                    {Name = "Ping", Value = ping and (tostring(round(ping)) .. " ms") or "n/a"},
+                    {Name = "Region Dist", Value = tostring(distance)},
+                })
+            end
+        end,
+    },
 })
 
-runtimeGraph = CardsTab:CreateLineGraph({
+Window:Tab("Cards"):CreateLineGraph({
     Id = "runtime_graph",
     Title = "Runtime Graph",
     Subtitle = "CreateLineGraph card",
     Points = graphPoints,
 })
 
-sliderSelection = CardsTab:CreateSliderSelection({
+Window:Tab("Cards"):CreateSliderSelection({
     Id = "stacked_sliders",
     Title = "Slider Selection",
     Subtitle = "CreateSliderSelection card",
@@ -547,18 +515,30 @@ sliderSelection = CardsTab:CreateSliderSelection({
     },
 })
 
-CardsTab:CreateButton({
+Window:Tab("Cards"):CreateButton({
     Title = "Capture Slider Snapshot",
     Subtitle = "Pushes the average slider value into the graph and runtime status",
     Callback = function()
-        local values = sliderSelection:Get()
+        local values = Window:CallCard("stacked_sliders", "Get")
         local average = averageValues(values)
-        syncOverview(average, "Snapshot")
-        notify("SliderSelection", "average = " .. tostring(round(average)), 1.6)
+        average = math.clamp(average, 0, 100)
+        Window:SetCard("demo_progress", average)
+        Window:SetCard("demo_circle", average)
+        Window:SetCardStatus("runtime_status", "Snapshot", average)
+        table.insert(graphPoints, average)
+        while #graphPoints > 12 do
+            table.remove(graphPoints, 1)
+        end
+        Window:CallCard("runtime_graph", "SetPoints", graphPoints)
+        Window:SendNotification({
+            Title = "SliderSelection",
+            Subtitle = "average = " .. tostring(round(average)),
+            Duration = 1.6,
+        })
     end,
 })
 
-CardsTab:CreateCardGrid({
+Window:Tab("Cards"):CreateCardGrid({
     Id = "card_grid",
     Title = "Quick Grid",
     Subtitle = "CreateCardGrid card",
@@ -587,13 +567,21 @@ CardsTab:CreateCardGrid({
             Type = "Toggle",
             Default = true,
             Callback = function(state)
-                setStatus(runtimeStatus, state and "Alerts On" or "Alerts Off", state and 100 or 10)
+                Window:SetCardStatus("runtime_status", state and "Alerts On" or "Alerts Off", state and 100 or 10)
             end,
         },
         {
             Label = "Graph +",
             Callback = function()
-                syncOverview(math.random(15, 95), "Injected")
+                local nextValue = math.random(15, 95)
+                Window:SetCard("demo_progress", nextValue)
+                Window:SetCard("demo_circle", nextValue)
+                Window:SetCardStatus("runtime_status", "Injected", nextValue)
+                table.insert(graphPoints, nextValue)
+                while #graphPoints > 12 do
+                    table.remove(graphPoints, 1)
+                end
+                Window:CallCard("runtime_graph", "SetPoints", graphPoints)
             end,
         },
         {
@@ -623,30 +611,30 @@ CardsTab:CreateCardGrid({
     },
 })
 
-CardsTab:CreateDivider({Label = "Full Surface"})
+Window:Tab("Cards"):CreateDivider({Label = "Full Surface"})
 
-CardsTab:CreateParagraph({
+Window:Tab("Cards"):CreateParagraph({
     Title = "Remaining Surface",
     Content = "The Inputs, Selectors, and Advanced tabs cover the rest of the LIB surface so every active card constructor is shown in this demo build.",
 })
 
-InputsTab:CreateTitle({Label = "Input / Validation Surface"})
+Window:Tab("Inputs"):CreateTitle({Label = "Input / Validation Surface"})
 
-InputsTab:CreateParagraph({
+Window:Tab("Inputs"):CreateParagraph({
     Title = "Input Rules",
     Content = "These cards demonstrate TrimSpace, BindValue, OnlyCharacter, OnlyNegative, RequireValidation, CommandInput, and rule-local Commands.",
 })
 
-InputsTab:CreateDivider({Label = "Bind / Validate"})
+Window:Tab("Inputs"):CreateDivider({Label = "Bind / Validate"})
 
-local boundPreviewLabel = InputsTab:CreateLabel({
+Window:Tab("Inputs"):CreateLabel({
     Id = "bound_preview",
     Title = "Bound Preview",
     Subtitle = "BindValue target label",
     Value = "ready",
 })
 
-InputsTab:CreateInput({
+Window:Tab("Inputs"):CreateInput({
     Id = "trimmed_bound_input",
     Title = "Trimmed Mirror",
     Subtitle = "TrimSpace + BindValue",
@@ -658,7 +646,7 @@ InputsTab:CreateInput({
     },
 })
 
-InputsTab:CreateInput({
+Window:Tab("Inputs"):CreateInput({
     Title = "Characters Only",
     Subtitle = "OnlyCharacter",
     Placeholder = "letters only",
@@ -668,7 +656,7 @@ InputsTab:CreateInput({
     },
 })
 
-InputsTab:CreateInput({
+Window:Tab("Inputs"):CreateInput({
     Title = "Negative Number",
     Subtitle = "OnlyNumber + OnlyNegative",
     Placeholder = "-25",
@@ -679,7 +667,7 @@ InputsTab:CreateInput({
     },
 })
 
-InputsTab:CreateInput({
+Window:Tab("Inputs"):CreateInput({
     Title = "Validated Code",
     Subtitle = "RequireValidation + ValidationPattern",
     Placeholder = "CDK-101",
@@ -690,7 +678,7 @@ InputsTab:CreateInput({
     },
 })
 
-InputsTab:CreateInput({
+Window:Tab("Inputs"):CreateInput({
     Title = "Command Console",
     Subtitle = "CommandInput + Commands | try ping, theme, rules, pulse 80, or localreset",
     Placeholder = "enter command",
@@ -699,47 +687,54 @@ InputsTab:CreateInput({
         CommandInput = true,
         Commands = {
             localreset = function()
-                syncOverview(0, "Local Reset")
-                notify("Local Command", "overview reset", 1.6)
+                Window:SetCard("demo_progress", 0)
+                Window:SetCard("demo_circle", 0)
+                Window:SetCardStatus("runtime_status", "Local Reset", 0)
+                table.insert(graphPoints, 0)
+                while #graphPoints > 12 do
+                    table.remove(graphPoints, 1)
+                end
+                Window:CallCard("runtime_graph", "SetPoints", graphPoints)
+                Window:SendNotification({
+                    Title = "Local Command",
+                    Subtitle = "overview reset",
+                    Duration = 1.6,
+                })
             end,
         },
     },
 })
 
-SelectorsTab:CreateTitle({Label = "Selector Cards"})
+Window:Tab("Selectors"):CreateTitle({Label = "Selector Cards"})
 
-SelectorsTab:CreateParagraph({
+Window:Tab("Selectors"):CreateParagraph({
     Title = "Color / Choice Cards",
     Content = "These cards cover RGB, HSV, palette, gradient, and icon selection. The callbacks feed into the shared flat color and runtime status cards.",
 })
 
-SelectorsTab:CreateDivider({Label = "Color Controls"})
+Window:Tab("Selectors"):CreateDivider({Label = "Color Controls"})
 
-SelectorsTab:CreateRGBSelector({
+Window:Tab("Selectors"):CreateRGBSelector({
     Title = "RGB Selector",
     Subtitle = "CreateRGBSelector card",
     Default = Color3.fromRGB(100, 200, 255),
     Callback = function(color)
-        if flatColorCard then
-            flatColorCard:Set(color)
-        end
-        setStatus(runtimeStatus, "RGB", 24)
+        Window:SetCard("flat_color", color)
+        Window:SetCardStatus("runtime_status", "RGB", 24)
     end,
 })
 
-SelectorsTab:CreateHSVSelector({
+Window:Tab("Selectors"):CreateHSVSelector({
     Title = "HSV Selector",
     Subtitle = "CreateHSVSelector card",
     Default = Color3.fromRGB(255, 140, 90),
     Callback = function(color)
-        if flatColorCard then
-            flatColorCard:Set(color)
-        end
-        setStatus(runtimeStatus, "HSV", 48)
+        Window:SetCard("flat_color", color)
+        Window:SetCardStatus("runtime_status", "HSV", 48)
     end,
 })
 
-SelectorsTab:CreateColorSelection({
+Window:Tab("Selectors"):CreateColorSelection({
     Title = "Color Selection",
     Subtitle = "CreateColorSelection card",
     PerRow = 4,
@@ -750,14 +745,16 @@ SelectorsTab:CreateColorSelection({
         {Label = "Sky", Color = Color3.fromRGB(100, 200, 255)},
     },
     Callback = function(color, label)
-        if flatColorCard then
-            flatColorCard:Set(color)
-        end
-        notify("ColorSelection", tostring(label), 1.4)
+        Window:SetCard("flat_color", color)
+        Window:SendNotification({
+            Title = "ColorSelection",
+            Subtitle = tostring(label),
+            Duration = 1.4,
+        })
     end,
 })
 
-SelectorsTab:CreateGradientSelector({
+Window:Tab("Selectors"):CreateGradientSelector({
     Title = "Gradient Selector",
     Subtitle = "CreateGradientSelector card",
     DefaultA = Color3.fromRGB(100, 255, 160),
@@ -765,12 +762,12 @@ SelectorsTab:CreateGradientSelector({
     DefaultRotation = 90,
     Callback = function(gradient)
         if gradient and gradient.Rotation then
-            setStatus(runtimeStatus, "Gradient", math.clamp(gradient.Rotation / 3.6, 0, 100))
+            Window:SetCardStatus("runtime_status", "Gradient", math.clamp(gradient.Rotation / 3.6, 0, 100))
         end
     end,
 })
 
-SelectorsTab:CreateIconSelection({
+Window:Tab("Selectors"):CreateIconSelection({
     Title = "Icon Selection",
     Subtitle = "CreateIconSelection card",
     PerRow = 4,
@@ -781,27 +778,31 @@ SelectorsTab:CreateIconSelection({
         {Label = "Delta", Value = "delta", Image = placeholderImage},
     },
     Callback = function(value)
-        notify("IconSelection", tostring(value), 1.4)
+        Window:SendNotification({
+            Title = "IconSelection",
+            Subtitle = tostring(value),
+            Duration = 1.4,
+        })
     end,
 })
 
-AdvancedTab:CreateTitle({Label = "Legacy / Advanced Cards"})
+Window:Tab("Advanced"):CreateTitle({Label = "Legacy / Advanced Cards"})
 
-AdvancedTab:CreateParagraph({
+Window:Tab("Advanced"):CreateParagraph({
     Title = "Legacy Surface",
     Content = "This tab rounds out the older core cards that were not in the roadmap-only demo: stepper, dropdowns, grouped presets, toggle dropdowns, image buttons, knob sliders, and repeat toggles.",
 })
 
-AdvancedTab:CreateDivider({Label = "Legacy Controls"})
+Window:Tab("Advanced"):CreateDivider({Label = "Legacy Controls"})
 
-local legacyValueLabel = AdvancedTab:CreateLabel({
+Window:Tab("Advanced"):CreateLabel({
     Id = "legacy_value",
     Title = "Legacy Value",
     Subtitle = "Dropdown / stepper mirror",
     Value = "Idle",
 })
 
-AdvancedTab:CreateStepper({
+Window:Tab("Advanced"):CreateStepper({
     Title = "Stepper",
     Subtitle = "CreateStepper card",
     Default = 4,
@@ -809,12 +810,20 @@ AdvancedTab:CreateStepper({
     Max = 12,
     Increment = 2,
     Callback = function(value)
-        legacyValueLabel:Set("Step " .. tostring(value))
-        syncOverview(math.clamp(value * 8, 0, 100), "Stepper")
+        Window:SetCard("legacy_value", "Step " .. tostring(value))
+        local nextValue = math.clamp(value * 8, 0, 100)
+        Window:SetCard("demo_progress", nextValue)
+        Window:SetCard("demo_circle", nextValue)
+        Window:SetCardStatus("runtime_status", "Stepper", nextValue)
+        table.insert(graphPoints, nextValue)
+        while #graphPoints > 12 do
+            table.remove(graphPoints, 1)
+        end
+        Window:CallCard("runtime_graph", "SetPoints", graphPoints)
     end,
 })
 
-AdvancedTab:CreateDropdown({
+Window:Tab("Advanced"):CreateDropdown({
     Title = "Dropdown",
     Subtitle = "CreateDropdown card",
     Options = {
@@ -823,12 +832,12 @@ AdvancedTab:CreateDropdown({
         {Label = "System", Value = "System"},
     },
     Callback = function(value)
-        legacyValueLabel:Set(tostring(value))
+        Window:SetCard("legacy_value", tostring(value))
         Window:BringToCard({Tab = tostring(value)})
     end,
 })
 
-AdvancedTab:CreateGroupSelection({
+Window:Tab("Advanced"):CreateGroupSelection({
     Title = "Group Selection",
     Subtitle = "CreateGroupSelection card",
     Groups = {
@@ -836,11 +845,15 @@ AdvancedTab:CreateGroupSelection({
         Modes = {"Build", "Inspect"},
     },
     Callback = function(value)
-        notify("GroupSelection", tostring(value), 1.4)
+        Window:SendNotification({
+            Title = "GroupSelection",
+            Subtitle = tostring(value),
+            Duration = 1.4,
+        })
     end,
 })
 
-AdvancedTab:CreateToggleDropdown({
+Window:Tab("Advanced"):CreateToggleDropdown({
     Title = "Toggle Dropdown",
     Subtitle = "CreateToggleDropdown card",
     Options = {
@@ -855,21 +868,25 @@ AdvancedTab:CreateToggleDropdown({
                 enabledCount += 1
             end
         end
-        legacyValueLabel:Set(tostring(enabledCount) .. " enabled")
+        Window:SetCard("legacy_value", tostring(enabledCount) .. " enabled")
     end,
 })
 
-AdvancedTab:CreateImageButton({
+Window:Tab("Advanced"):CreateImageButton({
     Title = "Image Button",
     Subtitle = "CreateImageButton card",
     Image = placeholderImage,
     Callback = function()
-        setStatus(runtimeStatus, "Image", 68)
-        notify("ImageButton", "pressed", 1.3)
+        Window:SetCardStatus("runtime_status", "Image", 68)
+        Window:SendNotification({
+            Title = "ImageButton",
+            Subtitle = "pressed",
+            Duration = 1.3,
+        })
     end,
 })
 
-AdvancedTab:CreateKnobSlider({
+Window:Tab("Advanced"):CreateKnobSlider({
     Title = "Knob Slider",
     Subtitle = "CreateKnobSlider card",
     Knobs = {
@@ -897,32 +914,43 @@ AdvancedTab:CreateKnobSlider({
     },
     Callback = function(values)
         if values and values[1] and values[2] then
-            legacyValueLabel:Set("B " .. tostring(round(values[1])) .. " | FOV " .. tostring(round(values[2])))
+            Window:SetCard("legacy_value", "B " .. tostring(round(values[1])) .. " | FOV " .. tostring(round(values[2])))
         end
     end,
 })
 
-AdvancedTab:CreateRepeatToggle({
+Window:Tab("Advanced"):CreateRepeatToggle({
     Title = "Repeat Toggle",
     Subtitle = "CreateRepeatToggle card",
     Interval = 1.2,
     Callback = function(pulseCount)
         local nextValue = ((pulseCount * 13) % 100)
-        syncOverview(nextValue, "Repeat " .. tostring(pulseCount))
+        Window:SetCard("demo_progress", nextValue)
+        Window:SetCard("demo_circle", nextValue)
+        Window:SetCardStatus("runtime_status", "Repeat " .. tostring(pulseCount), nextValue)
+        table.insert(graphPoints, nextValue)
+        while #graphPoints > 12 do
+            table.remove(graphPoints, 1)
+        end
+        Window:CallCard("runtime_graph", "SetPoints", graphPoints)
     end,
     ToggleCallback = function(state)
-        notify("RepeatToggle", state and "running" or "stopped", 1.4)
+        Window:SendNotification({
+            Title = "RepeatToggle",
+            Subtitle = state and "running" or "stopped",
+            Duration = 1.4,
+        })
     end,
 })
 
-RulesTab:CreateTitle({Label = "Rule Coverage"})
+Window:Tab("Rules"):CreateTitle({Label = "Rule Coverage"})
 
-RulesTab:CreateParagraph({
+Window:Tab("Rules"):CreateParagraph({
     Title = "How To Test",
     Content = "Start by granting permission, then work downward through validation, visibility, dependency, hold, double-click, debounce, region, key, ping, and click-counter actions. This tab now mixes older and newer rule hooks together.",
 })
 
-RulesTab:CreateInput({
+Window:Tab("Rules"):CreateInput({
     Id = "grant_permission",
     Title = "Grant Permission",
     Subtitle = "OnlyNumber + OnlyPositive + GrantPermission",
@@ -936,35 +964,54 @@ RulesTab:CreateInput({
     },
 })
 
-RulesTab:CreateLabel({
+Window:Tab("Rules"):CreateLabel({
     Id = "blurred_secret",
     Title = "Permission-Blurred Secret",
-    Subtitle = "PermissionBlur = 2",
+    Subtitle = "PermissionBlur = 2 hides card contents",
     Value = "Admin tools unlocked",
     Rules = {
         PermissionBlur = 2,
     },
 })
 
-RulesTab:CreateToggle({
+Window:Tab("Rules"):CreateButton({
+    Title = "Accent Rule Preview",
+    Subtitle = "CardAccent = full-card gradient tint + stroke shift",
+    Rules = {
+        CardAccent = {Color3.fromRGB(100, 210, 255), "tright", 0.95, true},
+    },
+    Callback = function()
+        Window:SendNotification({
+            Title = "CardAccent",
+            Subtitle = "Hover the card to reveal the gradient tint",
+            Duration = 1.5,
+        })
+    end,
+})
+
+Window:Tab("Rules"):CreateToggle({
     Id = "advanced_visible",
     Title = "Advanced Visibility",
     Subtitle = "Controls RequireCardVisible cards",
     Default = false,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Visible Only While Toggle Is On",
     Subtitle = "RequireCardVisible demo",
     Rules = {
         RequireCardVisible = {Id = "advanced_visible", Equals = true},
     },
     Callback = function()
-        notify("RequireCardVisible", "The toggle was on", 1.6)
+        Window:SendNotification({
+            Title = "RequireCardVisible",
+            Subtitle = "The toggle was on",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Hidden Until Permission 2",
     Subtitle = "HiddenCard demo",
     Rules = {
@@ -973,11 +1020,15 @@ RulesTab:CreateButton({
         end,
     },
     Callback = function()
-        notify("HiddenCard", "Permission 2 unlocked this card", 1.6)
+        Window:SendNotification({
+            Title = "HiddenCard",
+            Subtitle = "Permission 2 unlocked this card",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateSlider({
+Window:Tab("Rules"):CreateSlider({
     Id = "randomized_slider",
     Title = "Randomized Slider",
     Subtitle = "RandomizeValue + Transition",
@@ -989,22 +1040,26 @@ RulesTab:CreateSlider({
         Transition = 0.18,
     },
     Callback = function(value)
-        setStatus(runtimeStatus, "Randomized", value)
+        Window:SetCardStatus("runtime_status", "Randomized", value)
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Require Shift Key",
     Subtitle = "RequireKey = LeftShift",
     Rules = {
         RequireKey = Enum.KeyCode.LeftShift,
     },
     Callback = function()
-        notify("RequireKey", "Shift was held", 1.6)
+        Window:SendNotification({
+            Title = "RequireKey",
+            Subtitle = "Shift was held",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Click Counter Demo",
     Subtitle = "ClickCounter cycles through 3 callbacks",
     Callback = function()
@@ -1013,19 +1068,31 @@ RulesTab:CreateButton({
         ClickCounter = {
             ResetAfter = 3,
             [1] = function()
-                notify("ClickCounter", "First click branch", 1.5)
+                Window:SendNotification({
+                    Title = "ClickCounter",
+                    Subtitle = "First click branch",
+                    Duration = 1.5,
+                })
             end,
             [2] = function()
-                notify("ClickCounter", "Second click branch", 1.5)
+                Window:SendNotification({
+                    Title = "ClickCounter",
+                    Subtitle = "Second click branch",
+                    Duration = 1.5,
+                })
             end,
             [3] = function()
-                notify("ClickCounter", "Third click branch", 1.5)
+                Window:SendNotification({
+                    Title = "ClickCounter",
+                    Subtitle = "Third click branch",
+                    Duration = 1.5,
+                })
             end,
         },
     },
 })
 
-regionLabel = RulesTab:CreateLabel({
+Window:Tab("Rules"):CreateLabel({
     Id = "region_distance",
     Title = "Region Distance",
     Subtitle = "Used by RequireRegion demo",
@@ -1046,20 +1113,23 @@ regionLabel = RulesTab:CreateLabel({
     },
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Set Region Anchor",
     Subtitle = "Stores your current root position",
     Callback = function()
         local root = getRoot()
         if root then
             demoRegionCenter = root.Position
-            updateRuntimeTable()
-            notify("RequireRegion", "Anchor saved at current position", 1.8)
+            Window:SendNotification({
+                Title = "RequireRegion",
+                Subtitle = "Anchor saved at current position",
+                Duration = 1.8,
+            })
         end
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Region Locked Action",
     Subtitle = "RequireRegion within 40 studs of the anchor",
     Rules = {
@@ -1068,40 +1138,52 @@ RulesTab:CreateButton({
         end,
     },
     Callback = function()
-        notify("RequireRegion", "You are inside the anchored region", 1.8)
+        Window:SendNotification({
+            Title = "RequireRegion",
+            Subtitle = "You are inside the anchored region",
+            Duration = 1.8,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Ping Gate",
     Subtitle = "RequirePing <= 250ms",
     Rules = {
         RequirePing = 250,
     },
     Callback = function()
-        notify("RequirePing", "Ping check passed", 1.8)
+        Window:SendNotification({
+            Title = "RequirePing",
+            Subtitle = "Ping check passed",
+            Duration = 1.8,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Hold Safety Action",
     Subtitle = "Older hold rule shown with the newer sweep fix",
     RuleGroup = "SafetyAction",
     Callback = function()
-        notify("SafetyAction", "Hold + delay completed", 1.8)
+        Window:SendNotification({
+            Title = "SafetyAction",
+            Subtitle = "Hold + delay completed",
+            Duration = 1.8,
+        })
     end,
 })
 
-RulesTab:CreateDivider({Label = "Action Rules"})
+Window:Tab("Rules"):CreateDivider({Label = "Action Rules"})
 
-RulesTab:CreateToggle({
+Window:Tab("Rules"):CreateToggle({
     Id = "rule_enable_switch",
     Title = "AutoDisable Switch",
     Subtitle = "Turn this off to disable the next action",
     Default = true,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "AutoDisable Action",
     Subtitle = "AutoDisable while switch is off",
     Rules = {
@@ -1110,66 +1192,86 @@ RulesTab:CreateButton({
         end,
     },
     Callback = function()
-        notify("AutoDisable", "Card was enabled", 1.6)
+        Window:SendNotification({
+            Title = "AutoDisable",
+            Subtitle = "Card was enabled",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateToggle({
+Window:Tab("Rules"):CreateToggle({
     Id = "dependency_toggle",
     Title = "Dependency Toggle",
     Subtitle = "Used by RequireDependency",
     Default = false,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Dependency Action",
     Subtitle = "RequireDependency = dependency_toggle",
     Rules = {
         RequireDependency = {Id = "dependency_toggle", Equals = true},
     },
     Callback = function()
-        notify("RequireDependency", "Dependency was satisfied", 1.6)
+        Window:SendNotification({
+            Title = "RequireDependency",
+            Subtitle = "Dependency was satisfied",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateToggle({
+Window:Tab("Rules"):CreateToggle({
     Id = "dynamic_mode",
     Title = "Dynamic Callback Mode",
     Subtitle = "Toggles the DynamicCallback branch",
     Default = false,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Dynamic Callback",
     Subtitle = "DynamicCallback changes the action at runtime",
     Rules = {
         DynamicCallback = function(state)
             if state.values.dynamic_mode then
                 return function()
-                    notify("DynamicCallback", "Mode ON branch", 1.6)
-                    setStatus(runtimeStatus, "Dynamic On", 92)
+                    Window:SendNotification({
+                        Title = "DynamicCallback",
+                        Subtitle = "Mode ON branch",
+                        Duration = 1.6,
+                    })
+                    Window:SetCardStatus("runtime_status", "Dynamic On", 92)
                 end
             end
             return function()
-                notify("DynamicCallback", "Mode OFF branch", 1.6)
-                setStatus(runtimeStatus, "Dynamic Off", 28)
+                Window:SendNotification({
+                    Title = "DynamicCallback",
+                    Subtitle = "Mode OFF branch",
+                    Duration = 1.6,
+                })
+                Window:SetCardStatus("runtime_status", "Dynamic Off", 28)
             end
         end,
     },
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Permission 2 Action",
     Subtitle = "RequirePermission = 2",
     Rules = {
         RequirePermission = 2,
     },
     Callback = function()
-        notify("RequirePermission", "Permission gate passed", 1.6)
+        Window:SendNotification({
+            Title = "RequirePermission",
+            Subtitle = "Permission gate passed",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Confirm + Delay",
     Subtitle = "RequireConfirmation + Delay",
     Rules = {
@@ -1177,44 +1279,60 @@ RulesTab:CreateButton({
         Delay = 0.45,
     },
     Callback = function()
-        notify("Delay", "Delayed action completed", 1.6)
+        Window:SendNotification({
+            Title = "Delay",
+            Subtitle = "Delayed action completed",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Double Click Action",
     Subtitle = "RequireDoubleClick = 0.45",
     Rules = {
         RequireDoubleClick = 0.45,
     },
     Callback = function()
-        notify("RequireDoubleClick", "Double click confirmed", 1.6)
+        Window:SendNotification({
+            Title = "RequireDoubleClick",
+            Subtitle = "Double click confirmed",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Debounce Action",
     Subtitle = "Debounce = 1.5",
     Rules = {
         Debounce = 1.5,
     },
     Callback = function()
-        notify("Debounce", "Accepted click", 1.2)
+        Window:SendNotification({
+            Title = "Debounce",
+            Subtitle = "Accepted click",
+            Duration = 1.2,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Lock After First Click",
     Subtitle = "Lock rule demo",
     Rules = {
         Lock = true,
     },
     Callback = function()
-        notify("Lock", "This card is now locked", 1.6)
+        Window:SendNotification({
+            Title = "Lock",
+            Subtitle = "This card is now locked",
+            Duration = 1.6,
+        })
     end,
 })
 
-RulesTab:CreateButton({
+Window:Tab("Rules"):CreateButton({
     Title = "Move To Trigger",
     Subtitle = "RequireState via movement function",
     Rules = {
@@ -1224,19 +1342,28 @@ RulesTab:CreateButton({
         end,
     },
     Callback = function()
-        notify("RequireState", "Movement requirement passed", 1.6)
+        Window:SendNotification({
+            Title = "RequireState",
+            Subtitle = "Movement requirement passed",
+            Duration = 1.6,
+        })
     end,
 })
 
-SystemTab:CreateTitle({Label = "System / Search / Inputs"})
+Window:Tab("System"):CreateTitle({Label = "System / Search / Inputs"})
 
-notifyKeybind = SystemTab:CreateKeybind({
+Window:Tab("System"):CreateKeybind({
+    Id = "notify_keybind",
     Title = "Custom Notify Key",
     Subtitle = "Rebinding this key updates the demo hotkey",
     Default = Enum.KeyCode.V,
     Callback = function(keyCode)
-        notify("Keybind", "Bound to " .. tostring(keyCode), 1.4)
-        setStatus(runtimeStatus, "Rebound", 88)
+        Window:SendNotification({
+            Title = "Keybind",
+            Subtitle = "Bound to " .. tostring(keyCode),
+            Duration = 1.4,
+        })
+        Window:SetCardStatus("runtime_status", "Rebound", 88)
     end,
 })
 
@@ -1244,30 +1371,34 @@ UIS.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then
         return
     end
-    if notifyKeybind and notifyKeybind.Get and input.KeyCode == notifyKeybind:Get() then
-        notify("Hotkey", tostring(input.KeyCode), 1.4)
-        setStatus(runtimeStatus, "Hotkey", 88)
+    if input.KeyCode == Window:GetValue("notify_keybind") then
+        Window:SendNotification({
+            Title = "Hotkey",
+            Subtitle = tostring(input.KeyCode),
+            Duration = 1.4,
+        })
+        Window:SetCardStatus("runtime_status", "Hotkey", 88)
     end
 end)
 
-SystemTab:CreateMinimizeKeyinput({
+Window:Tab("System"):CreateMinimizeKeyinput({
     Title = "Minimize Key",
     Subtitle = "Changes the quick-selection key",
 })
 
-SystemTab:CreateToggleUIKeyinput({
+Window:Tab("System"):CreateToggleUIKeyinput({
     Title = "Toggle UI Key",
     Subtitle = "Changes the main toggle key",
 })
 
-if SystemTab.CreateThemeCycleKeyinput then
-    SystemTab:CreateThemeCycleKeyinput({
+if (Window:Tab("System")).CreateThemeCycleKeyinput then
+    Window:Tab("System"):CreateThemeCycleKeyinput({
         Title = "Theme Cycle Key",
         Subtitle = "Changes the theme-cycle key",
     })
 end
 
-SystemTab:CreateSlider({
+Window:Tab("System"):CreateSlider({
     Title = "Blur Intensity",
     Subtitle = "Uses Window:SetBlurIntensity()",
     Min = 0,
@@ -1279,7 +1410,7 @@ SystemTab:CreateSlider({
     end,
 })
 
-SystemTab:CreateButton({
+Window:Tab("System"):CreateButton({
     Title = "Focus Search",
     Subtitle = "Uses Window:FocusSearch()",
     Callback = function()
@@ -1287,7 +1418,7 @@ SystemTab:CreateButton({
     end,
 })
 
-SystemTab:CreateButton({
+Window:Tab("System"):CreateButton({
     Title = "Cycle Theme",
     Subtitle = "Uses Window:CycleTheme()",
     Callback = function()
@@ -1295,7 +1426,7 @@ SystemTab:CreateButton({
     end,
 })
 
-SystemTab:CreateButton({
+Window:Tab("System"):CreateButton({
     Title = "Bring To Rules",
     Subtitle = "Uses Window:BringToCard() directly",
     Callback = function()
@@ -1303,7 +1434,7 @@ SystemTab:CreateButton({
     end,
 })
 
-SystemTab:CreateButton({
+Window:Tab("System"):CreateButton({
     Title = "Send Notification",
     Subtitle = "Uses Window:SendNotification() directly",
     Callback = function()
@@ -1315,7 +1446,7 @@ SystemTab:CreateButton({
     end,
 })
 
-SystemTab:CreateParagraph({
+Window:Tab("System"):CreateParagraph({
     Title = "Testing Notes",
     Content = "Use the three right-side controls on cards to favourite them, add them to quickselect, or reorder them. You can still scroll the tab row and use search normally.",
 })
@@ -1327,19 +1458,13 @@ if camera then
     camera.FieldOfView = 70
 end
 
-updateRuntimeTable()
-syncOverview(Window:GetValue("demo_progress") or 36, "Ready")
+Window:SetCardStatus("runtime_status", "Ready", Window:GetValue("demo_progress") or 36)
 
-local runtimeRefreshAccumulator = 0
-RunService.Heartbeat:Connect(function(dt)
-    runtimeRefreshAccumulator += dt
-    if runtimeTable and runtimeRefreshAccumulator >= 0.25 then
-        runtimeRefreshAccumulator = 0
-        updateRuntimeTable()
-    end
-end)
-
-notify("CrystalDK Beta", "2.2.0 demo loaded", 3)
+Window:SendNotification({
+    Title = "CrystalDK Beta",
+    Subtitle = "2.2.1 demo loaded",
+    Duration = 3,
+})
 
 print("Session ID: " .. Session_ID)
 print("User Script ID: " .. User_Script_ID)
