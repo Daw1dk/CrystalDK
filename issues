@@ -1,9 +1,8 @@
 --[[
- CrystalDK Version Beta-2.2.1
+ CrystalDK Version Beta-2.4.1
  Issues in CrystalDK:
 
- CircleProgressBar actual Bar gets clipped by parent
- FOV is supposed to be saved & reverted when closing GUI
+ None Known
 ]]
 
--- To be fixed by Beta 2.3.0
+-- To be fixed by Beta 2.5.0
