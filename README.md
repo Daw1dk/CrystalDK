@@ -13,5 +13,4 @@ All cards & card rules are listed in API
 
 This was a project solely made by Daw1dk / B4Eekker (Im one person)
 
-<img width="748" height="1090" alt="{8913137B-0844-412D-A925-6A9ED486360B}" src="https://github.com/user-attachments/assets/32e09935-0780-4b13-b007-034b2b1ea0fe" />
-
+<img width="836" height="1093" alt="{5DECD1B1-FEC5-46A6-A88B-BC63ED3077D5}" src="https://github.com/user-attachments/assets/6884f3e5-e955-4b66-83ad-7d4c54b1c942" />
