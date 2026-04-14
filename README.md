@@ -4,7 +4,7 @@ CrystalDK features;
 Glassmorphic style UI
 Expandable framework & functions
 
-CrystalDK is currently in Beta (as of 05.04.26) and there are bugs, if any - report to b4eekker_83933 on Discord.
+CrystalDK is currently in Beta (as of 05.04.26) and there are bugs, if any - report to b4eekker on Discord.
 
 This UI has Cards instead of buttons as buttons would be too narrow in terms of functionality,
 Card rules are rules set on cards which can alter the function of the card during execution
