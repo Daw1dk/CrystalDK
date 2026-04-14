@@ -1,4 +1,4 @@
-CrystalDK Beta 2.4.1 API
+CrystalDK Beta 2.4.2 API
 
 Quick Start
 
@@ -17,7 +17,6 @@ local Window = CrystalDK:CreateWindow({
     BlurIntensity = 18,
     OpenFieldOfView = 35,
     OpenZoomDistance = 16,
-    CameraTweenTime = 0.28,
 })
 
 local Main = Window:CreateTab("Main")
@@ -35,8 +34,6 @@ Main:CreateButton({
     end,
 })
 ```
-
-The library handles the blur, bloom, key screen, and GUI camera tween internally. Consumer scripts only need to create the window, tabs, cards, and callbacks.
 
 Common card fields
 
@@ -660,9 +657,6 @@ Window / Misc API
 `Window:CreateTab(name)`
 - Creates a tab and returns the cached tab object.
 
-`Window:LoadConfiguration()`
-- Present in the API but currently a stub / no-op in this build.
-
 `Window.State`
 - Exposes live internal state, including:
 - `permission`
@@ -674,12 +668,3 @@ Window / Misc API
 - `blurIntensity`
 - `suffix`
 - `keyProfile`
-
-Notes
-
-- The right side of each card now has three built-in actions: favourite, quickselect, reorder.
-- `PermissionBlur` keeps the card shell visible but hides the card contents behind the lock overlay; `RequirePermission` is an interaction lock.
-- `GlobalCardRules` and `RuleGroups` are merged before direct card fields.
-- `CommandInput` checks `Window:RegisterCommand`, `cfg.Commands`, and `rules.Commands`.
-- Search, favourites, quickselect, and reorder behavior are built into the LIB.
-- `LoadConfiguration()` exists but is not implemented in the current version.
