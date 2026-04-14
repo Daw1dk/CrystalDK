@@ -7,10 +7,10 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local Window = CrystalDK:CreateWindow({
-    Name = "CrystalDK Beta 2.4.1 Demo",
-    LoadingTitle = "CrystalDK Beta 2.4.1",
+    Name = "CrystalDK V2.4.2 Demo",
+    LoadingTitle = "CrystalDK V2.4.2",
     LoadingSubtitle = "Full card  rule showcase",
-    KeySystem = false, -- Keep false untill 2.4.2 or 2.5.0 as there is a visibility error. OR enable it manually using dex.
+    KeySystem = true,
     PermissionLevel = 0,
     ToggleUIKey = Enum.KeyCode.Y,
     MinimizeKey = Enum.KeyCode.T,
@@ -107,7 +107,7 @@ Overview:CreateTitle({Label = "Welcome / Live Runtime"})
 
 Overview:CreateBanner({
     Id = "demo_overview_banner",
-    Title = "CrystalDK 2.4.1 Full Surface Demo",
+    Title = "CrystalDK V2.4.2 Full Surface Demo",
     Subtitle = "Every visible card, every roadmap rule, brighter accents almost everywhere, and far less top-level glue.",
     Image = "rbxassetid://9049438208",
     Tint = Color3.fromRGB(8, 12, 22),
@@ -1493,7 +1493,7 @@ Lighting.ClockTime = 14
 
 Window:SetCardStatus("demo_runtime_status", "Ready", 38)
 Window:SendNotification({
-    Title = "CrystalDK Beta 2.4.1",
+    Title = "CrystalDK V2.4.2",
     Subtitle = "Full card  rule showcase loaded",
     Duration = 3,
 })
