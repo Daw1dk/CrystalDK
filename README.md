@@ -9,6 +9,9 @@ CrystalDK is currently in Beta (as of 05.04.26) and there are bugs, if any - rep
 This UI has Cards instead of buttons as buttons would be too narrow in terms of functionality,
 Card rules are rules set on cards which can alter the function of the card during execution
 
+Demo shows most cards & card rules
+Baseplate is a template script to get started
+
 All cards & card rules are listed in API
 
 This was a project solely made by Daw1dk / B4Eekker (Im one person)
