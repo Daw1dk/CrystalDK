@@ -1,0 +1,108 @@
+local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"))()
+
+local Window = CrystalDK:CreateWindow({
+
+    -- Basic Info
+    Name = "Script name",                           -- Title shown on the UI
+    LoadingTitle = "Script Loading Title",          -- Title during loading screen
+    LoadingSubtitle = "Script Loading Subtitle",    -- Subtitle during loading
+
+    -- Key System (optional)
+    KeySystem = false,                      -- true = require key to open UI
+    -- PermissionLevel = 0,                 -- user permission level (used with rules)
+
+    -- Keybinds (optional)
+    ToggleUIKey = Enum.KeyCode.Y,           -- Show / hide UI
+    MinimizeKey = Enum.KeyCode.T,           -- Minimize UI
+    ThemeCycleKey = Enum.KeyCode.L,         -- Cycle themes
+
+    -- Camera Settings (optional)
+    BlurIntensity = 20,                     -- Background blur
+    OpenFieldOfView = 35,                   -- Camera FOV when UI opens
+    OpenZoomDistance = 16,                  -- Camera zoom distance
+    CameraTweenTime = 0.25,                 -- Animation speed
+
+    -- Built-in Settings Menu
+    SettingsEnabled = true,                 -- Allows user to open settings panel
+
+    -- Key System Config (Only used if KeySystem = true)
+    -- KeySettings = {
+    --     Title = "Enter Key",
+    --     Subtitle = "Access Required",
+    --     Note = "Get key from somewhere",
+    --     Keys = {"key1", "key2"}          -- valid keys
+    -- },
+})
+
+
+-- Tab
+local Main = Window:Tab("Main")             -- Name shown at top
+
+-- Paragraph example
+Main:CreateParagraph({
+    Title = "Welcome",
+    Content = "This is your CrystalDK baseplate. Start adding cards here.",
+})
+
+
+-- How to start building from here
+
+--[[
+    Everything in CrystalDK is built using cards
+
+    Examples you can add:
+
+    Main:CreateButton({
+        Title = "Click Me",
+        Callback = function()
+            print("Button pressed")
+        end,
+    })
+
+    Main:CreateToggle({
+        Title = "Toggle",
+        Default = false,
+        Callback = function(state)
+            print(state)
+        end,
+    })
+
+    Main:CreateSlider({
+        Title = "Slider",
+        Min = 0,
+        Max = 100,
+        Default = 50,
+        Callback = function(value)
+            print(value)
+        end,
+    })
+
+]]
+
+-- Useful Window Functions
+
+-- Window:SetTheme("Aurora")                   -- change theme
+-- Window:CycleTheme()                         -- cycle themes
+-- Window:OpenSettings()                       -- open settings UI
+
+Window:SendNotification({
+    Title = "Hello",
+    Subtitle = "This is a notification",
+    Duration = 3
+})
+
+
+-- Set a cards value
+-- Window:SetCard("card_id", value)
+
+-- Get a cards value
+-- Window:GetValue("card_id")
+
+-- Call card methods
+-- Window:CallCard("card_id", "MethodName", args)
+
+
+-- Notes
+
+-- CrystalDK is made to be beginner friendly, and to be an expandable framework to fit all scripts.
+-- Any issues DM b4eekker_83933
