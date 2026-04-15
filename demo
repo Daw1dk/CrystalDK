@@ -25,8 +25,9 @@ local Window = CrystalDK:CreateWindow({
         Subtitle = "Enter your CrystalDK key",
         Note = "This demo is intentionally huge. It tries to exercise every visible card and every roadmap rule while keeping interaction logic inside the cards.",
         Keys = {
-            "fin",
-            "pork"
+            "Demo",
+            "CrystalDK",
+            "Key"
         },
     },
 })
