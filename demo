@@ -7,9 +7,9 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local Window = CrystalDK:CreateWindow({
-    Name = "CrystalDK V2.4.2 Demo",
-    LoadingTitle = "CrystalDK V2.4.2",
-    LoadingSubtitle = "Full card  rule showcase",
+    Name = "CrystalDK V2.4.3 Demo",
+    LoadingTitle = "CrystalDK V2.4.3",
+    LoadingSubtitle = "Full card rule showcase",
     KeySystem = true,
     PermissionLevel = 0,
     ToggleUIKey = Enum.KeyCode.Y,
@@ -25,24 +25,31 @@ local Window = CrystalDK:CreateWindow({
         Subtitle = "Enter your CrystalDK key",
         Note = "This demo is intentionally huge. It tries to exercise every visible card and every roadmap rule while keeping interaction logic inside the cards.",
         Keys = {
-            "Demo",
-            "CrystalDK",
-            "Key"
+            "fin",
+            "pork"
         },
     },
 })
 
 Window:RegisterRuleGroup("flash_mint", {
     CardAccent = {
-        Color = Color3.fromRGB(84, 255, 180),
+        Colors = {
+            Color3.fromRGB(84, 255, 180),
+            Color3.fromRGB(110, 198, 255),
+            Color3.fromRGB(255, 210, 90),
+        },
         Side = "tleft",
-        Intensity = 1.25,
+        Intensity = 1.22,
     },
 })
 
 Window:RegisterRuleGroup("flash_gold", {
     CardAccent = {
-        Color = Color3.fromRGB(255, 210, 90),
+        Colors = {
+            Color3.fromRGB(255, 210, 90),
+            Color3.fromRGB(255, 148, 118),
+            Color3.fromRGB(255, 112, 214),
+        },
         Side = "bright",
         Intensity = 1.18,
     },
@@ -50,7 +57,11 @@ Window:RegisterRuleGroup("flash_gold", {
 
 Window:RegisterRuleGroup("flash_pink", {
     CardAccent = {
-        Color = Color3.fromRGB(255, 112, 214),
+        Colors = {
+            Color3.fromRGB(255, 112, 214),
+            Color3.fromRGB(255, 148, 118),
+            Color3.fromRGB(110, 198, 255),
+        },
         Side = "tright",
         Intensity = 1.22,
     },
@@ -58,7 +69,11 @@ Window:RegisterRuleGroup("flash_pink", {
 
 Window:RegisterRuleGroup("flash_blue_hover", {
     CardAccent = {
-        Color = Color3.fromRGB(110, 198, 255),
+        Colors = {
+            Color3.fromRGB(110, 198, 255),
+            Color3.fromRGB(84, 255, 180),
+            Color3.fromRGB(255, 112, 214),
+        },
         Side = "bleft",
         Intensity = 1.08,
         OnlyOnHover = true,
@@ -108,8 +123,8 @@ Overview:CreateTitle({Label = "Welcome / Live Runtime"})
 
 Overview:CreateBanner({
     Id = "demo_overview_banner",
-    Title = "CrystalDK V2.4.2 Full Surface Demo",
-    Subtitle = "Every visible card, every roadmap rule, brighter accents almost everywhere, and far less top-level glue.",
+    Title = "CrystalDK V2.4.3 Full Surface Demo",
+    Subtitle = "Every visible card, every roadmap rule, layered full-card accents almost everywhere, and far less top-level glue.",
     Image = "rbxassetid://9049438208",
     Tint = Color3.fromRGB(8, 12, 22),
     TintTransparency = 0.18,
@@ -529,12 +544,12 @@ Selectors:CreateInput({
 Selectors:CreateInput({
     Id = "demo_only_number",
     Title = "Numbers Only",
-    Subtitle = "OnlyNumber  RequireValidation",
+    Subtitle = "OnlyNumber + RequireValidation",
     Placeholder = "0 - 999",
     RuleGroup = "flash_pink",
     Rules = {
         OnlyNumber = true,
-        RequireValidation = "^%-?%d$",
+        RequireValidation = "^%-?%d+$",
     },
     Callback = function(text)
         local numeric = tonumber(text)
@@ -582,11 +597,11 @@ Selectors:CreateInput({
 Selectors:CreateInput({
     Id = "demo_validation_input",
     Title = "Validation Pattern",
-    Subtitle = "RequireValidation = uppercase letters  digits only",
+    Subtitle = "RequireValidation = uppercase letters + digits only",
     Placeholder = "ABC123",
     RuleGroup = "flash_pink",
     Rules = {
-        RequireValidation = "^[A-Z%d]$",
+        RequireValidation = "^[A-Z%d]+$",
     },
 })
 
@@ -788,7 +803,7 @@ Selectors:CreateSliderSelection({
     },
     RuleGroup = "flash_pink",
     Callback = function(index, value)
-        Window:SetCard("demo_slider_selection_value", ("S%d -> %d"):format(index, math.floor(value, 0.5)))
+        Window:SetCard("demo_slider_selection_value", ("S%d -> %d"):format(index, math.floor(value + 0.5)))
     end,
 })
 
@@ -856,7 +871,7 @@ Selectors:CreateGradientSelector({
     RuleGroup = "flash_mint",
     Callback = function(payload)
         Window:SetCard("demo_gradient_readout", ("Rot %d | A:%d,%d,%d | B:%d,%d,%d"):format(
-            math.floor(payload.Rotation, 0.5),
+            math.floor(payload.Rotation + 0.5),
             math.floor(payload.ColorA.R * 255),
             math.floor(payload.ColorA.G * 255),
             math.floor(payload.ColorA.B * 255),
@@ -1413,7 +1428,7 @@ DataLab:CreateStatusIndicator({
             if os.clock() - state._tick >= 0.8 then
                 state._tick = os.clock()
                 local permission = Window:GetPermissionLevel()
-                obj:SetStatus(permission >= 2 and "elevated" or "stable", math.clamp(40, permission * 20, 0, 100))
+                obj:SetStatus(permission >= 2 and "elevated" or "stable", math.clamp(40 + (permission * 20), 0, 100))
             end
         end,
     },
@@ -1457,8 +1472,8 @@ DataLab:CreateLineGraph({
             state._points = state._points or {24, 32, 40, 48, 56, 64, 72}
             if os.clock() - state._tick >= 1.1 then
                 state._tick = os.clock()
-                state._phase = 0.45
-                table.insert(state._points, math.floor((math.sin(state._phase) * 22), 55))
+                state._phase += 0.45
+                table.insert(state._points, math.floor((math.sin(state._phase) * 22) + 55))
                 while #state._points > 16 do
                     table.remove(state._points, 1)
                 end
@@ -1494,7 +1509,7 @@ Lighting.ClockTime = 14
 
 Window:SetCardStatus("demo_runtime_status", "Ready", 38)
 Window:SendNotification({
-    Title = "CrystalDK V2.4.2",
+    Title = "CrystalDK V2.4.3",
     Subtitle = "Full card  rule showcase loaded",
     Duration = 3,
 })
