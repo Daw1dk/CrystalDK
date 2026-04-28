@@ -1,4 +1,4 @@
--- CrystalDK Version 2.4.2
+-- CrystalDK Version 2.5.0
 
 --[[
  Issues in CrystalDK:
@@ -9,8 +9,7 @@
 --[[
  Roadmap for CrystalDK:
 
- Create a new CrystalDK script which will let users generate and edit script UUIDs
- This will be used for saving settings and other sensitive information to avoid tampering
+ No current
 ]]
 
--- To be implemented by Beta 2.5.0
+-- To be implemented by Beta 2.6.0
