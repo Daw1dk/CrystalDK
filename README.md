@@ -12,8 +12,9 @@ Card rules are rules set on cards which can alter the function of the card durin
 Demo shows most cards & card rules
 Baseplate is a template script to get started
 
-All cards & card rules are listed in API
+Most cards & card rules are listed in API
 
 This was a project solely made by Daw1dk / B4Eekker (Im one person)
 
-<img width="813" height="1132" alt="{3B778F6F-B077-450D-B4EE-1CA8EBF154D9}" src="https://github.com/user-attachments/assets/eef64a4e-0964-4d32-80b6-3b25de608bdf" />
+<img width="678" height="1062" alt="{01E23249-7866-44FE-A494-AD5BC33BFC1E}" src="https://github.com/user-attachments/assets/1ba01308-180b-41ca-bd01-ef78a89bf1b5" />
+
