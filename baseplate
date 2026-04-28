@@ -3,7 +3,7 @@ local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw
 local Window = CrystalDK:CreateWindow({
 
     -- Basic Info
-    Name = "Script name",                           -- Title shown on the UI
+    Name = "Name",                                  -- Title shown on the UI
     LoadingTitle = "Script Loading Title",          -- Title during loading screen
     LoadingSubtitle = "Script Loading Subtitle",    -- Subtitle during loading
 
