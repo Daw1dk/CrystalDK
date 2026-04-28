@@ -1,0 +1,367 @@
+CrystalDK V2.5.0 API
+
+Quick Start
+
+```lua
+local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"))()
+
+local Window = CrystalDK:CreateWindow({
+    Name = "CrystalDK Core",
+    LoadingTitle = "CrystalDK Core",
+    LoadingSubtitle = "State + persistence demo",
+    KeySystem = false,
+    SettingsEnabled = true,
+    ShowSystemSettings = false,
+    ToggleUIKey = Enum.KeyCode.Y,
+    MinimizeKey = Enum.KeyCode.T,
+    ThemeCycleKey = Enum.KeyCode.L,
+    DefaultProfile = "default",
+    PersistenceFolder = "CrystalDK",
+})
+
+local Main = Window:Tab("Main")
+
+Window:CreateState("density", 0.65, {Persist = true})
+
+Main:CreateSlider({
+    Id = "density_slider",
+    Title = "Density",
+    Subtitle = "step size now supports decimals",
+    Min = 0,
+    Max = 1,
+    Step = 0.05,
+    State = {
+        Name = "density",
+        Persist = true,
+    },
+    Persist = true,
+})
+
+Main:CreateButton({
+    Id = "save_profile",
+    Title = "Save Configuration",
+    Subtitle = "writes the active profile",
+    Callback = function()
+        Window:SaveConfiguration()
+    end,
+})
+```
+
+Core
+
+`CreateWindow(windowCfg)`
+
+Recommended core-facing options:
+- `Name`
+- `LoadingTitle`
+- `LoadingSubtitle`
+- `KeySystem`
+- `SettingsEnabled`
+- `ToggleUIKey`
+- `MinimizeKey`
+- `ThemeCycleKey`
+- `BlurIntensity`
+- `OpenFieldOfView`
+- `OpenZoomDistance`
+- `DefaultProfile`
+- `PersistenceFolder`
+- `NotificationHistoryLimit`
+- `ActionHistoryLimit`
+
+Core Window Methods
+
+- `Window:Tab(name, icon?)`
+  Returns a tab object.
+
+- `Window:CreateState(name, defaultValue, options?)`
+  Creates shared state.
+  `options.Persist = true` makes that state part of saved configurations.
+
+- `Window:SetState(name, value)`
+  Updates shared state and pushes the change into bound cards.
+
+- `Window:GetState(name)`
+  Returns shared state.
+
+- `Window:SaveConfiguration(profileName?)`
+  Saves persisted window settings, persisted states, and persisted cards.
+
+- `Window:LoadConfiguration(profileName?)`
+  Loads a profile and reapplies theme, keybinds, holder position, active tab, and persisted state/card data.
+
+- `Window:ExportConfiguration(profileName?)`
+  Returns configuration JSON.
+
+- `Window:ImportConfiguration(jsonText)`
+  Imports configuration JSON into the active runtime.
+
+- `Window:SetConfigurationProfile(profileName)`
+  Sets the active profile slot.
+
+- `Window:GetConfigurationProfile()`
+  Returns the active profile slot.
+
+- `Window:GetConfigurationProfiles()`
+  Returns discovered profile names when file APIs are available.
+
+- `Window:SendNotification(cfg)`
+  Core toast API.
+
+- `Window:Confirm(cfg)`
+  Opens the built-in confirm modal.
+
+- `Window:FocusSearch()`
+  Focuses the top search box.
+
+- `Window:BringToCard(target)`
+  Jumps to a tab/card. Useful for actionable notifications and action-center rows.
+
+Core Cards
+
+The 90 percent path should usually stay inside these:
+- `CreateTitle`
+- `CreateParagraph`
+- `CreateLabel`
+- `CreateButton`
+- `CreateToggle`
+- `CreateInput`
+- `CreateSlider`
+- `CreateDropdown`
+- `CreateStatusIndicator`
+- `CreateProgressBar`
+- `CreateTable`
+
+Common card fields:
+- `Id`
+- `Title`
+- `Subtitle`
+- `Default`
+- `Callback`
+- `Rules`
+- `RuleGroup`
+- `Persist`
+- `State`
+
+Shared State Binding
+
+Cards can bind directly to shared state:
+
+```lua
+Window:CreateState("project_name", "Crystal Core", {Persist = true})
+
+Main:CreateInput({
+    Id = "project_name_input",
+    Title = "Project Name",
+    Default = Window:GetState("project_name"),
+    State = {
+        Name = "project_name",
+        Persist = true,
+    },
+    Persist = true,
+})
+```
+
+State binding forms:
+- `State = "project_name"`
+- `State = { Name = "project_name", Persist = true }`
+- `BindState = "project_name"`
+
+Computed State
+
+```lua
+Window:CreateComputedState(
+    "summary",
+    {"project_name", "density"},
+    function(get)
+        return string.format("%s | %.2f", get("project_name") or "Untitled", tonumber(get("density") or 0))
+    end
+)
+```
+
+Use computed state for:
+- summary labels
+- status text
+- search-facing derived strings
+- rules that need a stable shared read model
+
+Persistence
+
+The persistence layer is now first-class and should be finished before more major card growth.
+
+What gets persisted when opted in:
+- theme
+- custom theme color
+- blur intensity
+- open field of view
+- toggle/minimize/theme-cycle keys
+- holder position
+- active tab
+- shared state where `Persist = true`
+- cards where `Persist = true`
+
+Recommended persistence pattern:
+- use shared state for business/UI intent
+- set `Persist = true` on cards that should restore directly
+- expose `SaveConfiguration`, `LoadConfiguration`, `ExportConfiguration`, and `ImportConfiguration` through one visible panel
+
+Preset helper:
+- `Window:CreateSettingsPanel(target, cfg)`
+  Builds profile input, import/export buffer, settings access, save/load/export/import buttons, and search focus.
+
+Notifications, Modals, and Search
+
+`Window:SendNotification({
+    Title = "...",
+    Subtitle = "...",
+    Duration = 3,
+    JumpTo = {Tab = "Main", Id = "some_card"},
+    Queue = "stack" | "replace",
+    MaxVisible = 4,
+    Actions = {
+        {Label = "View", JumpTo = {Tab = "Main", Id = "some_card"}},
+        {Label = "Retry", Callback = function() end},
+    },
+})`
+
+Supported notification concepts:
+- action buttons
+- jump-to-card/tab behavior
+- queue replacement
+- max visible stack count
+- notification history via the action center
+
+Search notes:
+- search now matches card title
+- subtitle
+- id / flag / card id
+- tab name
+- recent queries are tracked internally
+
+Tables
+
+`CreateTable(cfg)` now supports:
+- sticky header + scrolling body
+- sorting
+- filtering
+- row selection
+- row click callbacks
+- row action buttons
+- better live row replacement through `SetRows`
+
+Useful table config:
+- `Columns`
+- `Rows`
+- `Filterable = true`
+- `Sortable = true`
+- `Selectable = true`
+- `RowCallback = function(row, sourceIndex, windowState) end`
+- `RowActions = { {Label = "Retry", Callback = function(row, sourceIndex, windowState) end} }`
+
+Returned table methods:
+- `SetRows(rows)`
+- `SetFilter(text)`
+- `GetFilter()`
+- `SortBy(columnName, direction?)`
+- `GetSelection()`
+- `SelectRow(index)`
+- `Get()`
+
+Advanced Window Methods
+
+- `Window:RegisterRuleGroup(name, rules)`
+- `Window:CreateComputedState(name, dependencies, computeFn, options?)`
+- `Window:CreateStatusCluster(target, cfg)`
+- `Window:CreateSettingsPanel(target, cfg)`
+- `Window:CreateActionCenter(target, cfg)`
+- `Window:SetTheme(themeName)`
+- `Window:SetThemeColor(color3)`
+- `Window:GetActionHistory()`
+- `Window:GetNotificationHistory()`
+- `Window:ClearActionHistory()`
+- `Window:ClearNotificationHistory()`
+- `Window:GetRecentSearches()`
+
+Composition Helpers
+
+`CreateStatusCluster`
+- status indicator
+- progress bar
+- circle progress
+- line graph
+
+`CreateSettingsPanel`
+- profile slot input
+- import/export buffer
+- save/load/export/import buttons
+- settings open button
+- search focus button
+
+`CreateActionCenter`
+- recent notifications
+- local action history
+- clear buttons
+- clickable rows with jump targets
+
+Rule Engine
+
+Rules are now organized into clearer categories:
+
+Validation
+- `TrimSpace`
+- `OnlyNumber`
+- `OnlyCharacter`
+- `OnlyPositive`
+- `OnlyNegative`
+- `RequireValidation`
+- `ValidationPattern`
+- `CommandInput`
+- `GrantPermission`
+- `Step`
+- `Increment`
+
+Gating
+- `RequireDependency`
+- `AutoDisable`
+- `RequirePermission`
+- `RequireState`
+- `RequireCardVisible`
+- `HiddenCard`
+- `RequireKey`
+- `RequirePing`
+- `RequireRegion`
+
+Lifecycle
+- `RequireUpdate`
+- `OnClose`
+- `Debounce`
+- `RequireDoubleClick`
+- `RequireHold`
+- `HoldTime`
+- `Delay`
+- `Lock`
+- `DynamicCallback`
+- `ClickCounter`
+- `BindValue`
+- `CopyValue`
+- `BringTo`
+- `RandomizeValue`
+
+Visual
+- `Transition`
+- `PermissionBlur`
+- `CardAccent`
+
+Rule Execution Model
+
+- Validation runs before callbacks and before persistence writes.
+- Gating runs before interaction, visibility refresh, and action execution.
+- Lifecycle runs during accepted interaction, update loops, and close events.
+- Visual rules run during mount, hover refresh, and theme refresh.
+
+Slider / Stepper Step Support
+
+Use either:
+- `Step = 0.05`
+- `Increment = 0.05`
+
+This now works for sliders and steppers and is also recognized through rules.
