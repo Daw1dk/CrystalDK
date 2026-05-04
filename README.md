@@ -12,7 +12,7 @@ Card rules are rules set on cards which can alter the function of the card durin
 
 
 
-NOTE:
+# NOTE:
 
 This github page is outdated. All info is on Discord, All of the code (Loading CrystalDK.. etc) has moved to Cloudflare.
 
