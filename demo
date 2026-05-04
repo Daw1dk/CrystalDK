@@ -1,20 +1,21 @@
-local CrystalDK = loadstring(game:HttpGet("https://raw.githubusercontent.com/Daw1dk/CrystalDK/refs/heads/main/lua"))()
+local CrystalDK = loadstring(game:HttpGet("https://crystaldk.lososeunpicito.workers.dev/crystaldk?key=global"))()
 
 local Window = CrystalDK:CreateWindow({
-    Name = "CrystalDK Core V2.6.0 Demo",
-    LoadingTitle = "CrystalDK Core V2.6.0",
-    LoadingSubtitle = "Sections, state, tables, modals, layouts, and profiles",
+    Name = "CrystalDK Core V2.7.0 Demo",
+    LoadingTitle = "CrystalDK Core V2.7.0",
+    LoadingSubtitle = "Full client card atlas with rules, subtabs, repeaters, modals, and persistence",
     KeySystem = false,
     ToggleUIKey = Enum.KeyCode.Y,
     MinimizeKey = Enum.KeyCode.T,
     ThemeCycleKey = Enum.KeyCode.L,
     SettingsEnabled = true,
+    ShowSystemSettings = false,
     BlurIntensity = 22,
     OpenFieldOfView = 35,
     OpenZoomDistance = 16,
     NotificationHistoryLimit = 80,
     ActionHistoryLimit = 120,
-    DefaultProfile = "core_demo",
+    DefaultProfile = "core_demo_v270",
     PersistenceFolder = "CrystalDK",
 })
 
@@ -30,206 +31,366 @@ Window:RegisterVisualPreset("demo_mint", {
     },
 })
 
-Window:RegisterVisualPreset("demo_alert", {
+Window:RegisterVisualPreset("demo_sunset", {
     CardAccent = {
         Colors = {
-            Color3.fromRGB(255, 112, 214),
-            Color3.fromRGB(255, 148, 118),
-            Color3.fromRGB(255, 210, 90),
+            Color3.fromRGB(255, 126, 168),
+            Color3.fromRGB(255, 170, 94),
+            Color3.fromRGB(255, 228, 110),
         },
         Side = "tright",
-        Intensity = 1.12,
+        Intensity = 1.1,
     },
 })
 
-Window:RegisterConfigurationMigration("V2.5.0", function(payload)
-    payload.schemaVersion = 2
-    payload.migratedBy = "CrystalDK V2.6.0 Demo"
+Window:RegisterConfigurationMigration("V2.7.0", function(payload)
+    payload.schemaVersion = 3
+    payload.migratedBy = "CrystalDK V2.7.0 Demo"
     return payload
 end)
 
 local Overview = Window:Tab("Overview")
-local Compose = Window:Tab("Compose")
+local Build = Window:Tab("Build")
 local Data = Window:Tab("Data")
-local Profiles = Window:Tab("Profiles")
 local Activity = Window:Tab("Activity")
+local RulesTab = Window:Tab("Rules")
+local Catalog = Window:Tab("Catalog")
 
-Window:CreateState("demo_project_name", "Crystal Core", {
-    Persist = true,
-    Metadata = {Group = "identity", Description = "Primary project label"},
-})
+Window:CreateState("demo_mode", "Target", {Persist = true})
 Window:CreateState("demo_theme_mode", "Aurora", {Persist = true})
+Window:CreateState("demo_show_advanced", true, {Persist = true})
+Window:CreateState("demo_live_notes", "Draw a path, store a point, then rebuild the list.", {Persist = true})
+Window:CreateState("demo_macro_text", "wait(0.2)\nprint('CrystalDK V2.7.0')", {Persist = true})
+Window:CreateState("demo_status_text", "Ready")
 Window:CreateState("demo_density", 0.65, {Persist = true})
-Window:CreateState("demo_live_hints", true, {Persist = true})
-Window:CreateState("demo_favorite_service", "Shared State", {Persist = true})
-Window:CreateState("demo_runtime_status", "Ready")
-Window:CreateState("demo_runtime_percent", 68)
-Window:CreateState("demo_last_event", "Initialized")
+Window:CreateState("demo_rule_mode", "Target", {Persist = true})
+Window:CreateState("demo_rule_gate", true, {Persist = true})
+Window:CreateState("demo_rule_text", "Crystal", {Persist = true})
+Window:CreateState("demo_modal_note", "No modal action yet.", {Persist = true})
+Window:CreateState("demo_catalog_input", "Falcon", {Persist = true})
 
-Window:CreateComputedState(
-    "demo_state_summary",
-    {"demo_project_name", "demo_theme_mode", "demo_density", "demo_live_hints", "demo_favorite_service"},
-    function(get)
-        return string.format(
-            "%s | %s | density %.2f | hints %s | focus %s",
-            tostring(get("demo_project_name") or "Crystal Core"),
-            tostring(get("demo_theme_mode") or "Aurora"),
-            tonumber(get("demo_density") or 0) or 0,
-            get("demo_live_hints") and "on" or "off",
-            tostring(get("demo_favorite_service") or "none")
-        )
-    end
-)
-
-local runtimeCluster
-local serviceTable
-local stateEventCount = 0
-
-local function setRuntime(status, percent, point)
-    local nextPercent = math.clamp(tonumber(percent) or 0, 0, 100)
-    Window:BatchStateUpdates({
-        demo_runtime_status = status,
-        demo_runtime_percent = nextPercent,
-        demo_last_event = status,
+local function loadPlaces()
+    return Window:LoadData("demo_places", {
+        {
+            Name = "Spawn",
+            Position = Vector3.new(0, 8, 0),
+            Note = "Default demo point",
+        },
+        {
+            Name = "Bridge",
+            Position = Vector3.new(38, 14, -22),
+            Note = "Saved through data helpers",
+        },
     })
-    if runtimeCluster then
-        runtimeCluster:SetStatus(status, nextPercent)
-        runtimeCluster:AddPoint(point or nextPercent)
-    end
 end
 
-local function buildServiceRows()
-    return {
-        {Service = "Sections", State = "Grouped", Owner = "Compose", Load = 91},
-        {Service = "State Watchers", State = tostring(stateEventCount) .. " events", Owner = "Overview", Load = 78},
-        {Service = "Prompt / Select", State = "Ready", Owner = "Compose", Load = 73},
-        {Service = "Profiles", State = Window:GetConfigurationProfile(), Owner = "Profiles", Load = 84},
-        {Service = "Rule Trace", State = "Inspectable", Owner = "Data", Load = 66},
-        {Service = "Action Center", State = "Live", Owner = "Activity", Load = 88},
-    }
+local function loadSteps()
+    return Window:LoadData("demo_steps", {
+        {Label = "Open menu", Subtitle = "Use the toggle key"},
+        {Label = "Pick a theme", Subtitle = "Theme picker wraps live theme apply"},
+        {Label = "Store a point", Subtitle = "Vector3 input + data helpers"},
+    })
 end
 
-Window:SubscribeState("*", function(_, _, stateName)
-    stateEventCount += 1
-    if stateName ~= "demo_last_event" then
-        Window:SetState("demo_last_event", "State changed: " .. tostring(stateName))
-    end
-    if serviceTable then
-        serviceTable:SetRows(buildServiceRows())
-    end
-end)
+local savedPlaces = loadPlaces()
+local orderedSteps = loadSteps()
+local savedRepeater
+local stepList
 
-local overviewSection = Overview:CreateSection({
-    Id = "demo_overview_section",
-    Title = "V2.6.0 Surface",
-    RuleGroup = "demo_mint",
-})
+local function savePlaces()
+    Window:SaveData("demo_places", savedPlaces)
+end
 
-overviewSection:CreateBanner({
-    Id = "demo_overview_banner",
-    Title = "CrystalDK V2.6.0",
-    Subtitle = "Sections, groups, watchers, modals, dashboards, settings layouts, profile helpers, and richer tables.",
+local function saveSteps()
+    Window:SaveData("demo_steps", orderedSteps)
+end
+
+local function setStatus(text)
+    Window:SetState("demo_status_text", text)
+end
+
+Overview:CreateBanner({
+    Id = "demo_intro_banner",
+    Title = "CrystalDK V2.7.0",
+    Subtitle = "This demo highlights subtabs, repeaters, searchable controls, runtime rebuilds, and client-only persistence.",
     Image = "rbxassetid://9049438208",
     Tint = Color3.fromRGB(8, 12, 22),
     TintTransparency = 0.2,
+    RuleGroup = "demo_mint",
     Callback = function()
-        Window:BringToCard({Tab = "Data", Id = "demo_service_table"})
+        Window:BringToCard({Tab = "Build", Id = "demo_surface_host"})
     end,
 })
 
-overviewSection:CreateLabel({
-    Id = "demo_summary_label",
-    Title = "Computed Summary",
-    Subtitle = "derived from shared state",
-    Value = Window:GetState("demo_state_summary"),
-    State = "demo_state_summary",
+Overview:CreateInlineStatus({
+    Id = "demo_status_card",
+    Title = "Runtime Status",
+    Value = Window:GetState("demo_status_text"),
+    State = "demo_status_text",
     RuleGroup = "demo_mint",
 })
 
-runtimeCluster = Window:CreateStatusCluster(Overview, {
-    IdPrefix = "demo_runtime",
-    Title = "Runtime Health",
-    Subtitle = "state-driven status cluster",
-    DefaultStatus = Window:GetState("demo_runtime_status"),
-    Percent = Window:GetState("demo_runtime_percent"),
-    Points = {24, 39, 55, 68, 72, 64, 81},
-    MaxPoints = 18,
+Overview:CreateLabel({
+    Id = "demo_notes_card",
+    Title = "Live Notes",
+    Subtitle = "shared-state text can drive helper cards too",
+    Value = Window:GetState("demo_live_notes"),
+    State = "demo_live_notes",
 })
 
-Window:CreateDashboardPanel(Overview, {
-    IdPrefix = "demo_dashboard",
-    Title = "Dashboard Panel",
-    Description = "Packaged composition helper with metrics, rows, actions, and optional activity.",
-    RuleGroup = "demo_mint",
-    Metrics = {
-        {Title = "Profile", Value = Window:GetConfigurationProfile()},
-        {Title = "Events", Value = stateEventCount},
-        {Title = "Theme", Value = Window:GetTheme()},
-    },
-    Columns = {
-        {Key = "Service", Label = "Service"},
-        {Key = "State", Label = "State"},
-        {Key = "Load", Label = "Load", Formatter = "percent"},
-    },
-    Rows = buildServiceRows(),
-    Actions = {
-        {
-            Label = "Focus Search",
-            Callback = function()
-                Window:FocusSearch()
-            end,
-        },
-        {
-            Label = "Notify",
-            Callback = function()
-                Window:SendUndoNotification({
-                    Title = "Undo-capable notification",
-                    Subtitle = "This uses the V2.6.0 undo helper.",
-                    Duration = 4,
-                    Undo = function()
-                        setRuntime("Undo pressed", 52, 52)
-                    end,
-                })
-            end,
-        },
-    },
-    IncludeActionCenter = true,
+Overview:CreateButton({
+    Id = "demo_focus_build",
+    Title = "Jump To Build Surface",
+    Subtitle = "uses BringToCard and the new nested surface",
+    RuleGroup = "demo_sunset",
+    Callback = function()
+        Window:BringToCard({Tab = "Build", Id = "demo_surface_host"})
+        setStatus("Moved to Build")
+    end,
 })
 
-local stateGroup = Compose:CreateAdvancedGroup({
-    Id = "demo_state_group",
-    Title = "State + Modals",
-    Description = "Advanced group with state binding, watcher activity, prompt/select modals, and batch updates.",
+local buildSection = Build:CreateSection({
+    Id = "demo_surface_section",
+    Title = "V2.7.0 Surface",
     RuleGroup = "demo_mint",
 })
 
-stateGroup:CreateInput({
-    Id = "demo_project_name_card",
-    Title = "Project Name",
-    Subtitle = "shared text state with metadata",
-    Default = Window:GetState("demo_project_name"),
-    State = {Name = "demo_project_name", Persist = true},
+local host = buildSection:CreateSubtabHost({
+    Id = "demo_surface_host",
+    Title = "Surface",
+    Subtitle = "Target, Saved, and Macro live inside one tab",
+})
+
+local TargetPage = host:CreateSubtab("Target", {
+    Color = Color3.fromRGB(84, 255, 180),
+})
+local SavedPage = host:CreateSubtab("Saved", {
+    Color = Color3.fromRGB(110, 198, 255),
+})
+local MacroPage = host:CreateSubtab("Macro", {
+    Color = Color3.fromRGB(255, 210, 90),
+})
+
+TargetPage:CreateSearchableDropdown({
+    Id = "demo_mode_picker",
+    Title = "Mode",
+    Subtitle = "search inside large option lists",
+    Options = {
+        "Target",
+        "Saved",
+        "Macro",
+        "Route",
+        "Marker",
+        "Practice",
+        "Review",
+        "Active",
+        "Quiet",
+    },
+    Default = Window:GetState("demo_mode"),
+    State = {Name = "demo_mode", Persist = true},
     Persist = true,
+    Callback = function(choice)
+        setStatus("Mode set to " .. tostring(choice))
+    end,
 })
 
-stateGroup:CreateDropdown({
-    Id = "demo_theme_mode_card",
+local targetVector = TargetPage:CreateVector3Input({
+    Id = "demo_target_vector",
+    Title = "Target Position",
+    Subtitle = "compact X, Y, Z, plus Self",
+    Default = Vector3.new(14, 8, -3),
+    Persist = true,
+    MaxLength = 12,
+    Hint = "Each numeric box grows left for larger values. Self reads the local root position.",
+})
+
+TargetPage:CreateInlineStatus({
+    Id = "demo_target_hint",
+    Title = "Hint",
+    Value = "Use Self to capture the current position instantly.",
+})
+
+TargetPage:CreateButton({
+    Id = "demo_store_place",
+    Title = "Store Current Target",
+    Subtitle = "pushes the current Vector3 into saved data and refreshes the repeater",
+    Callback = function()
+        local position = targetVector:Get()
+        table.insert(savedPlaces, {
+            Name = "Point " .. tostring(#savedPlaces + 1),
+            Position = position,
+            Note = "Stored from Vector3 input",
+        })
+        savePlaces()
+        if savedRepeater then
+            savedRepeater:SetItems(savedPlaces)
+        end
+        Window:SetState("demo_live_notes", "Saved point count: " .. tostring(#savedPlaces))
+        setStatus("Stored target point")
+    end,
+})
+
+savedRepeater = SavedPage:CreateRepeater({
+    Id = "demo_saved_repeater",
+    Title = "Saved Places",
+    Subtitle = "repeater owns its runtime cards",
+    Items = savedPlaces,
+    EmptyText = "No saved places yet.",
+    Layout = "cards",
+    RenderItem = function(scope, item, index)
+        scope:CreateButton({
+            Id = "demo_saved_place_" .. index,
+            Title = item.Name,
+            Subtitle = string.format("%.1f, %.1f, %.1f", item.Position.X, item.Position.Y, item.Position.Z),
+            Callback = function()
+                targetVector:Set(item.Position)
+                setStatus("Loaded " .. tostring(item.Name))
+            end,
+            ContextActions = {
+                {
+                    Label = "Delete",
+                    Callback = function()
+                        table.remove(savedPlaces, index)
+                        savePlaces()
+                        savedRepeater:SetItems(savedPlaces)
+                        setStatus("Deleted " .. tostring(item.Name))
+                    end,
+                },
+            },
+        })
+
+        scope:CreateInlineStatus({
+            Id = "demo_saved_place_note_" .. index,
+            Title = "Note",
+            Value = item.Note or "No note",
+        })
+    end,
+})
+
+SavedPage:CreateButton({
+    Id = "demo_refresh_saved",
+    Title = "Refresh Saved Scope",
+    Subtitle = "calls Window:RefreshSection on the repeater scope",
+    Callback = function()
+        Window:RefreshSection(savedRepeater.Scope)
+        setStatus("Refreshed saved scope")
+    end,
+})
+
+SavedPage:CreateButton({
+    Id = "demo_rebuild_saved",
+    Title = "Rebuild Saved Scope",
+    Subtitle = "re-renders runtime-owned repeater cards",
+    Callback = function()
+        Window:RebuildSection(savedRepeater.Scope)
+        setStatus("Rebuilt saved scope")
+    end,
+})
+
+MacroPage:CreateMultilineInput({
+    Id = "demo_notes_input",
+    Title = "Notes",
+    Subtitle = "multiline text keeps the full card width",
+    Default = Window:GetState("demo_live_notes"),
+    Lines = 5,
+    State = {Name = "demo_live_notes", Persist = true},
+    Persist = true,
+    MaxLength = 220,
+    Hint = "Use this for route notes, instructions, or lightweight saved descriptions.",
+})
+
+MacroPage:CreateCodeInput({
+    Id = "demo_macro_input",
+    Title = "Macro Text",
+    Subtitle = "code-style multiline input",
+    Default = Window:GetState("demo_macro_text"),
+    Lines = 8,
+    State = {Name = "demo_macro_text", Persist = true},
+    Persist = true,
+    MaxLength = 420,
+    Hint = "Code input is still just client text storage, so it works well for macros and serialized snippets.",
+})
+
+local controls = Build:CreateAdvancedGroup({
+    Id = "demo_controls_group",
+    Title = "Controls",
+    Description = "The new wrappers stay inside the same card language as the older surface.",
+    RuleGroup = "demo_mint",
+})
+
+controls:CreateThemePicker({
+    Id = "demo_theme_picker",
     Title = "Theme",
-    Subtitle = "dropdown drives theme state",
-    Options = {"Aurora", "Iceglass", "Ivory", "Coral", "Nebula", "Verdant", "Roseglass", "Solaris", "Slate", "Custom"},
+    Subtitle = "theme picker wraps live theme apply",
     Default = Window:GetState("demo_theme_mode"),
     State = {Name = "demo_theme_mode", Persist = true},
     Persist = true,
-    Callback = function(choice)
-        Window:SetTheme(choice)
-        setRuntime("Theme changed", 76, 76)
+    Callback = function(themeName)
+        Window:SetState("demo_theme_mode", themeName)
+        setStatus("Theme set to " .. tostring(themeName))
     end,
 })
 
-stateGroup:CreateSlider({
+controls:CreateDropdown({
+    Id = "demo_legacy_dropdown",
+    Title = "Classic Dropdown",
+    Subtitle = "old dropdown behavior stays intact",
+    Options = {"Aurora", "Iceglass", "Solaris", "Custom"},
+    Default = Window:GetTheme(),
+    Callback = function(choice)
+        Window:SetTheme(choice)
+        setStatus("Classic dropdown picked " .. tostring(choice))
+    end,
+})
+
+controls:CreateColorPicker({
+    Id = "demo_color_picker",
+    Title = "Accent Color",
+    Subtitle = "color picker can push the live custom accent",
+    Default = Color3.fromRGB(84, 255, 180),
+    Callback = function(color)
+        Window:SetThemeColor(color)
+        setStatus("Accent color updated")
+    end,
+})
+
+controls:CreateKeybindPicker({
+    Id = "demo_keybind_picker",
+    Title = "Focus Keybind",
+    Subtitle = "editable keybind card on top of the existing key plumbing",
+    Default = Enum.KeyCode.G,
+    Callback = function(keyCode)
+        setStatus("Keybind set to " .. tostring(keyCode):gsub("Enum.KeyCode.", ""))
+    end,
+})
+
+controls:CreateInput({
+    Id = "demo_quick_label",
+    Title = "Quick Label",
+    Subtitle = "single-line input with explicit MaxLength",
+    Default = Window:GetState("demo_catalog_input"),
+    State = {Name = "demo_catalog_input", Persist = true},
+    Persist = true,
+    MaxLength = 24,
+    Hint = "This value is reused by the rule and modal tabs so you can see shared state move around.",
+    Callback = function(text)
+        Window:SetState("demo_catalog_input", text)
+    end,
+})
+
+controls:CreateToggle({
+    Id = "demo_advanced_toggle",
+    Title = "Show Advanced",
+    Subtitle = "container-level visibility rules can hide whole groups",
+    Default = Window:GetState("demo_show_advanced"),
+    State = {Name = "demo_show_advanced", Persist = true},
+    Persist = true,
+})
+
+controls:CreateSlider({
     Id = "demo_density_slider",
     Title = "Density",
-    Subtitle = "0.05 step support",
+    Subtitle = "existing cards still behave the same",
     Min = 0,
     Max = 1,
     Step = 0.05,
@@ -238,267 +399,146 @@ stateGroup:CreateSlider({
     Persist = true,
 })
 
-stateGroup:CreateToggle({
-    Id = "demo_live_hints_toggle",
-    Title = "Live Hints",
-    Subtitle = "persisted toggle state",
-    Default = Window:GetState("demo_live_hints"),
-    State = {Name = "demo_live_hints", Persist = true},
-    Persist = true,
+local advanced = Build:CreateCollapsibleGroup({
+    Id = "demo_advanced_group",
+    Title = "Advanced Builder",
+    Subtitle = "This opener now renders as a divider row",
+    RuleGroup = "demo_sunset",
+    VisibilityRules = {
+        State = "demo_show_advanced",
+        Equals = true,
+    },
 })
 
-stateGroup:CreateButton({
-    Id = "demo_prompt_button",
-    Title = "Prompt Project Name",
-    Subtitle = "uses Window:Prompt",
-    RuleGroup = "demo_alert",
-    Callback = function()
-        Window:Prompt({
-            Title = "Project name",
-            Subtitle = "Update shared state from a prompt modal.",
-            Default = Window:GetState("demo_project_name"),
-            Placeholder = "Crystal Core",
-            Callback = function(result)
-                if result.Confirmed then
-                    Window:SetState("demo_project_name", result.Value)
-                    Window:SetCard("demo_project_name_card", result.Value)
-                    setRuntime("Prompt applied", 80, 80)
-                end
-            end,
-        })
-    end,
-})
-
-stateGroup:CreateButton({
-    Id = "demo_select_button",
-    Title = "Select Theme",
-    Subtitle = "uses Window:Select",
-    RuleGroup = "demo_alert",
-    Callback = function()
-        Window:Select({
-            Title = "Theme preset",
-            Subtitle = "Select returns a structured result object.",
-            Options = {"Aurora", "Nebula", "Verdant", "Solaris", "Slate"},
-            Default = Window:GetState("demo_theme_mode"),
-            Callback = function(result)
-                if result.Confirmed then
-                    Window:SetState("demo_theme_mode", result.Value)
-                    Window:SetCard("demo_theme_mode_card", result.Value)
-                    Window:SetTheme(result.Value)
-                    setRuntime("Select applied", 82, 82)
-                end
-            end,
-        })
-    end,
-})
-
-stateGroup:CreateButton({
-    Id = "demo_batch_button",
-    Title = "Batch Starter Preset",
-    Subtitle = "uses BatchStateUpdates",
-    Callback = function()
-        Window:BatchStateUpdates({
-            demo_project_name = "Crystal Core",
-            demo_theme_mode = "Aurora",
-            demo_density = 0.65,
-            demo_live_hints = true,
-            demo_favorite_service = "Shared State",
-        })
-        Window:SetCard("demo_project_name_card", "Crystal Core")
-        Window:SetCard("demo_theme_mode_card", "Aurora")
-        Window:SetCard("demo_density_slider", 0.65)
-        Window:SetCard("demo_live_hints_toggle", true)
-        Window:SetTheme("Aurora")
-        setRuntime("Batch preset applied", 84, 84)
-    end,
-})
-
-local collapseGroup = Compose:CreateCollapsibleGroup({
-    Id = "demo_collapsible",
-    Title = "Collapsible Tools",
-    Subtitle = "group hides or shows child controls",
-    RuleGroup = "demo_mint",
-})
-
-collapseGroup:CreateHSVSelector({
-    Id = "demo_custom_accent",
-    Title = "Custom Accent",
-    Subtitle = "activates Custom theme",
-    Default = Color3.fromRGB(84, 255, 180),
-    Callback = function(color)
-        Window:SetThemeColor(color)
-        Window:SetTheme("Custom")
-        Window:SetState("demo_theme_mode", "Custom")
-        Window:SetCard("demo_theme_mode_card", "Custom")
-    end,
-})
-
-collapseGroup:CreateButton({
-    Id = "demo_retry_notification",
-    Title = "Retry Notification",
-    Subtitle = "uses SendRetryNotification",
-    Callback = function()
-        Window:SendRetryNotification({
-            Title = "Retry helper",
-            Subtitle = "Retry action is wired automatically.",
-            Retry = function()
-                setRuntime("Retry pressed", 71, 71)
-            end,
-        })
-    end,
-})
-
-serviceTable = Data:CreateTable({
-    Id = "demo_service_table",
-    Title = "Service Board",
-    Subtitle = "column descriptors, formatters, custom sort, actions",
-    Columns = {
-        {Key = "Service", Label = "Service"},
-        {Key = "State", Label = "State"},
-        {Key = "Owner", Label = "Owner"},
+stepList = advanced:CreateReorderableList({
+    Id = "demo_steps_list",
+    Title = "Ordered Steps",
+    Subtitle = "move rows up or down",
+    Items = orderedSteps,
+    ContextActions = {
         {
-            Key = "Load",
-            Label = "Load",
-            Formatter = "percent",
-            Sorter = function(a, b)
-                return (tonumber(a) or 0) < (tonumber(b) or 0)
+            Label = "Duplicate",
+            Callback = function(item, index)
+                table.insert(orderedSteps, index + 1, {
+                    Label = item.Label .. " Copy",
+                    Subtitle = item.Subtitle,
+                })
+                saveSteps()
+                stepList:SetItems(orderedSteps)
+                setStatus("Duplicated step")
             end,
         },
     },
-    Rows = buildServiceRows(),
-    Filterable = true,
+    Callback = function(nextItems)
+        orderedSteps = nextItems
+        saveSteps()
+    end,
+})
+
+advanced:CreateButton({
+    Id = "demo_add_step",
+    Title = "Add Step",
+    Subtitle = "pushes another row into the reorderable list",
+    Callback = function()
+        table.insert(orderedSteps, {
+            Label = "Step " .. tostring(#orderedSteps + 1),
+            Subtitle = "Added at runtime",
+        })
+        saveSteps()
+        stepList:SetItems(orderedSteps)
+        setStatus("Added a step")
+    end,
+})
+
+Data:CreateGridView({
+    Id = "demo_grid_view",
+    Title = "Grid View",
+    Subtitle = "compact item browsing",
+    Columns = 3,
+    Items = {
+        {Label = "Theme", Subtitle = "Uses theme picker"},
+        {Label = "Places", Subtitle = "Uses repeater + data"},
+        {Label = "Macro", Subtitle = "Uses code input"},
+        {Label = "Rules", Subtitle = "Uses visibility rules"},
+        {Label = "Lists", Subtitle = "Uses reorderable list"},
+        {Label = "Groups", Subtitle = "Uses divider opener"},
+    },
+    Callback = function(item)
+        setStatus("Viewed " .. tostring(item.Label))
+    end,
+})
+
+Data:CreateTable({
+    Id = "demo_surface_table",
+    Title = "Surface Table",
+    Subtitle = "legacy table path with actions and row callbacks",
+    Columns = {"Name", "Type", "Note"},
+    Rows = {
+        {Name = "Subtabs", Type = "Container", Note = "Nested target / saved / macro pages"},
+        {Name = "Repeater", Type = "Runtime", Note = "Owns dynamic runtime cards"},
+        {Name = "GridView", Type = "Display", Note = "Compact dense summaries"},
+        {Name = "InlineStatus", Type = "Display", Note = "Divider row with live status text"},
+        {Name = "Vector3Input", Type = "Input", Note = "Compact X / Y / Z / Self cluster"},
+    },
     Sortable = true,
+    Filterable = true,
     Selectable = true,
-    StickyActions = true,
     RowCallback = function(row)
-        Window:SetState("demo_favorite_service", row.Service)
-        setRuntime(tostring(row.State or "Selected"), tonumber(row.Load) or 0, tonumber(row.Load) or 0)
+        setStatus("Table row opened: " .. tostring(row.Name))
     end,
     RowActions = {
         {
-            Label = "Trace",
-            Callback = function()
-                local trace = Window:GetRuleTrace("demo_service_table")
-                Window:SendNotification({
-                    Title = "Rule trace",
-                    Subtitle = "Rules tracked: " .. tostring(trace and trace.Rules and "yes" or "none"),
-                    Duration = 3,
-                })
+            Label = "Use",
+            Callback = function(row)
+                setStatus("Using " .. tostring(row.Name))
             end,
         },
         {
-            Label = "Focus",
+            Label = "Menu",
             Callback = function(row)
-                Window:SetState("demo_favorite_service", row.Service)
-                Window:BringToCard({Tab = "Compose", Id = "demo_state_group_description"})
+                Window:ShowContextMenu({
+                    Title = tostring(row.Name) .. " Actions",
+                    Subtitle = "Row-level context actions.",
+                    Item = row,
+                    ContextActions = {
+                        {
+                            Label = "Jump",
+                            Callback = function()
+                                Window:BringToCard({Tab = "Build", Id = "demo_surface_host"})
+                                setStatus("Jumped from table context")
+                            end,
+                        },
+                        {
+                            Label = "Note",
+                            Callback = function(item)
+                                Window:SetState("demo_modal_note", tostring(item.Note))
+                                setStatus("Stored row note")
+                            end,
+                        },
+                    },
+                })
             end,
         },
     },
 })
 
-Data:CreateLabel({
-    Id = "demo_favorite_service_card",
-    Title = "Focused Service",
-    Subtitle = "set by table row selection",
-    Value = Window:GetState("demo_favorite_service"),
-    State = "demo_favorite_service",
-})
-
 Data:CreateButton({
-    Id = "demo_table_columns",
-    Title = "Swap Table Columns",
-    Subtitle = "uses SetColumns / GetColumns",
+    Id = "demo_save_profile",
+    Title = "Save Profile",
+    Subtitle = "writes persisted states and cards",
     Callback = function()
-        serviceTable:SetColumns({
-            {Key = "Service", Label = "Feature"},
-            {Key = "Load", Label = "Score", Formatter = "percent"},
-            {Key = "Owner", Label = "Tab"},
-        })
-        setRuntime("Columns swapped", 74, 74)
+        Window:SaveConfiguration()
+        setStatus("Saved profile")
     end,
 })
 
 Data:CreateButton({
-    Id = "demo_rule_debug",
-    Title = "Show Rule Debug",
-    Subtitle = "uses GetRuleDebugTraces",
+    Id = "demo_load_profile",
+    Title = "Load Profile",
+    Subtitle = "restores persisted states and cards",
     Callback = function()
-        local traces = Window:GetRuleDebugTraces()
-        local count = 0
-        for _ in pairs(traces) do
-            count += 1
-        end
-        Window:SendNotification({
-            Title = "Rule debug traces",
-            Subtitle = tostring(count) .. " cards have trace entries.",
-            Duration = 3,
-        })
-    end,
-})
-
-Window:CreateSettingsLayout(Profiles, {
-    IdPrefix = "demo_settings_layout",
-    Preset = "full",
-    Title = "Settings Layout",
-    RuleGroup = "demo_mint",
-})
-
-Profiles:CreateButton({
-    Id = "demo_export_theme_scope",
-    Title = "Export Theme Scope",
-    Subtitle = "exports only window/theme scope",
-    Callback = function()
-        local encoded = Window:ExportConfiguration(Window:GetConfigurationProfile(), {
-            Scopes = {"window"},
-        })
-        Window:SendNotification({
-            Title = "Scoped export",
-            Subtitle = encoded and "Window scope encoded" or "Export failed",
-            Duration = 2,
-        })
-    end,
-})
-
-Profiles:CreateButton({
-    Id = "demo_duplicate_profile",
-    Title = "Duplicate Profile",
-    Subtitle = "uses DuplicateConfigurationProfile",
-    Callback = function()
-        local ok, result = Window:DuplicateConfigurationProfile(Window:GetConfigurationProfile(), "core_demo_copy")
-        Window:SendNotification({
-            Title = ok and "Profile duplicated" or "Duplicate unavailable",
-            Subtitle = tostring(result),
-            Duration = 3,
-        })
-    end,
-})
-
-Profiles:CreateButton({
-    Id = "demo_rename_profile",
-    Title = "Rename Copy",
-    Subtitle = "uses RenameConfigurationProfile",
-    Callback = function()
-        local ok, result = Window:RenameConfigurationProfile("core_demo_copy", "core_demo_renamed")
-        Window:SendNotification({
-            Title = ok and "Profile renamed" or "Rename unavailable",
-            Subtitle = tostring(result),
-            Duration = 3,
-        })
-    end,
-})
-
-Profiles:CreateButton({
-    Id = "demo_delete_profile",
-    Title = "Delete Renamed Copy",
-    Subtitle = "uses DeleteConfigurationProfile",
-    RequireConfirmation = true,
-    Callback = function()
-        local ok, result = Window:DeleteConfigurationProfile("core_demo_renamed")
-        Window:SendNotification({
-            Title = ok and "Profile deleted" or "Delete unavailable",
-            Subtitle = tostring(result),
-            Duration = 3,
-        })
+        Window:LoadConfiguration()
+        setStatus("Loaded profile")
     end,
 })
 
@@ -506,52 +546,415 @@ Window:CreateActionCenter(Activity, {
     IdPrefix = "demo_activity",
     Title = "Action Center",
     Subtitle = "notifications and local actions",
-    TableTitle = "Recent Events",
-    TableSubtitle = "click rows with jump targets to move through the UI",
     MaxRows = 30,
 })
 
 Activity:CreateLabel({
-    Id = "demo_state_metadata",
-    Title = "Project Metadata",
-    Subtitle = "uses GetStateMetadata",
-    Value = Window:GetStateMetadata("demo_project_name").Description or "none",
+    Id = "demo_modal_note_label",
+    Title = "Modal Notes",
+    Subtitle = "confirm, prompt, select, and context actions all write back here",
+    Value = Window:GetState("demo_modal_note"),
+    State = "demo_modal_note",
 })
 
 Activity:CreateButton({
-    Id = "demo_clear_history",
-    Title = "Clear Histories",
-    Subtitle = "action and notification history reset",
+    Id = "demo_confirm",
+    Title = "Show Confirm",
+    Subtitle = "confirm temporarily hides the main shell behind the modal surface",
     Callback = function()
-        Window:ClearActionHistory()
-        Window:ClearNotificationHistory()
-        setRuntime("Histories cleared", 50, 50)
+        Window:Confirm({
+            Title = "Apply Demo Change?",
+            Subtitle = "Use the confirm shell to test the modal focus behavior.",
+            Callback = function()
+                Window:SetState("demo_modal_note", "Confirmed a demo action.")
+                setStatus("Confirm accepted")
+            end,
+        })
     end,
 })
 
-local function profileExists(profileName)
-    for _, name in ipairs(Window:GetConfigurationProfiles()) do
-        if name == profileName then
-            return true
-        end
-    end
-    return false
+Activity:CreateButton({
+    Id = "demo_prompt",
+    Title = "Show Prompt",
+    Subtitle = "prompt returns short text into shared state",
+    Callback = function()
+        Window:Prompt({
+            Title = "Rename Surface",
+            Subtitle = "Type a short label for the catalog input.",
+            Default = Window:GetState("demo_catalog_input"),
+            Callback = function(result)
+                if result and result.Confirmed then
+                    local nextValue = tostring(result.Value or result.Text or result.Input or Window:GetState("demo_catalog_input"))
+                    Window:SetState("demo_catalog_input", nextValue)
+                    Window:SetState("demo_modal_note", "Prompt saved: " .. nextValue)
+                    setStatus("Prompt accepted")
+                end
+            end,
+        })
+    end,
+})
+
+Activity:CreateButton({
+    Id = "demo_select",
+    Title = "Show Select",
+    Subtitle = "select offers a compact picker for action routing",
+    Callback = function()
+        Window:Select({
+            Title = "Choose A Landing Surface",
+            Subtitle = "Jump directly from the modal.",
+            Options = {
+                {Label = "Overview", Value = "Overview"},
+                {Label = "Build", Value = "Build"},
+                {Label = "Rules", Value = "Rules"},
+                {Label = "Catalog", Value = "Catalog"},
+            },
+            Default = "Build",
+            Callback = function(result)
+                if result and result.Confirmed then
+                    local choice = tostring(result.Value or result.Label or "Build")
+                    Window:SetState("demo_modal_note", "Selected " .. choice)
+                    setStatus("Select chose " .. choice)
+                end
+            end,
+        })
+    end,
+})
+
+Activity:CreateButton({
+    Id = "demo_context_menu",
+    Title = "Show Context Menu",
+    Subtitle = "window-level context actions can drive runtime surfaces too",
+    Callback = function()
+        Window:ShowContextMenu({
+            Title = "Demo Actions",
+            Subtitle = "Pick a quick client-side action.",
+            ContextActions = {
+                {
+                    Label = "Jump To Target",
+                    Callback = function()
+                        Window:BringToCard({Tab = "Build", Id = "demo_target_vector"})
+                        Window:SetState("demo_modal_note", "Context jumped to Target Position.")
+                        setStatus("Context jump complete")
+                    end,
+                },
+                {
+                    Label = "Rebuild Saved",
+                    Callback = function()
+                        Window:RebuildSection(savedRepeater.Scope)
+                        Window:SetState("demo_modal_note", "Context rebuilt the saved repeater.")
+                        setStatus("Context rebuilt saved scope")
+                    end,
+                },
+            },
+        })
+    end,
+})
+
+Activity:CreateButton({
+    Id = "demo_notify",
+    Title = "Notify",
+    Subtitle = "sends a toast with jump support",
+    Callback = function()
+        Window:SendNotification({
+            Title = "CrystalDK V2.7.0 Demo",
+            Subtitle = "Client-only surface updated",
+            Duration = 3,
+            JumpTo = {Tab = "Overview", Id = "demo_intro_banner"},
+        })
+        setStatus("Sent notification")
+    end,
+})
+
+Activity:CreateButton({
+    Id = "demo_clear_histories",
+    Title = "Clear Histories",
+    Subtitle = "clears action and notification history",
+    Callback = function()
+        Window:ClearActionHistory()
+        Window:ClearNotificationHistory()
+        setStatus("Cleared histories")
+    end,
+})
+
+RulesTab:CreateParagraph({
+    Id = "demo_rules_intro",
+    Title = "Rule Playground",
+    Content = "This tab exercises additive rule operators, container rule fields, and shared-state visibility. Toggle the gate, switch the mode, and change the predicate text to see different cards appear.",
+})
+
+RulesTab:CreateSearchableDropdown({
+    Id = "demo_rule_mode_picker",
+    Title = "Rule Mode",
+    Subtitle = "drives Equals, NotEquals, In, NotIn, And, and Or demos",
+    Options = {"Target", "Saved", "Macro", "Muted", "Disabled"},
+    Default = Window:GetState("demo_rule_mode"),
+    State = {Name = "demo_rule_mode", Persist = true},
+    Persist = true,
+    Callback = function(choice)
+        Window:SetState("demo_rule_mode", choice)
+        setStatus("Rule mode is " .. tostring(choice))
+    end,
+})
+
+RulesTab:CreateToggle({
+    Id = "demo_rule_gate_toggle",
+    Title = "Rule Gate",
+    Subtitle = "drives Not, And, Or, and SectionRules demos",
+    Default = Window:GetState("demo_rule_gate"),
+    State = {Name = "demo_rule_gate", Persist = true},
+    Persist = true,
+})
+
+RulesTab:CreateInput({
+    Id = "demo_rule_text_input",
+    Title = "Predicate Text",
+    Subtitle = "predicate demo appears when this text reaches six characters",
+    Default = Window:GetState("demo_rule_text"),
+    State = {Name = "demo_rule_text", Persist = true},
+    Persist = true,
+    MaxLength = 18,
+    Hint = "Predicate receives the shared window state and can inspect any stored value.",
+})
+
+local ruleSection = RulesTab:CreateSection({
+    Id = "demo_rule_cards_section",
+    Title = "Card Rules",
+    RuleGroup = "demo_mint",
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_equals",
+    Title = "Equals",
+    Subtitle = "visible only when Rule Mode equals Target",
+    Value = "demo_rule_mode == Target",
+    Rules = {
+        State = "demo_rule_mode",
+        Equals = "Target",
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_notequals",
+    Title = "NotEquals",
+    Subtitle = "visible while Rule Mode is anything except Macro",
+    Value = "demo_rule_mode ~= Macro",
+    Rules = {
+        State = "demo_rule_mode",
+        NotEquals = "Macro",
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_in",
+    Title = "In",
+    Subtitle = "visible when Rule Mode is Target or Saved",
+    Value = "demo_rule_mode in {Target, Saved}",
+    Rules = {
+        State = "demo_rule_mode",
+        In = {"Target", "Saved"},
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_notin",
+    Title = "NotIn",
+    Subtitle = "visible when Rule Mode is not Muted or Disabled",
+    Value = "demo_rule_mode not in {Muted, Disabled}",
+    Rules = {
+        State = "demo_rule_mode",
+        NotIn = {"Muted", "Disabled"},
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_and",
+    Title = "And",
+    Subtitle = "visible only when Gate is on and Rule Mode is Target",
+    Value = "gate && mode == Target",
+    Rules = {
+        And = {
+            {State = "demo_rule_gate", Equals = true},
+            {State = "demo_rule_mode", Equals = "Target"},
+        },
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_or",
+    Title = "Or",
+    Subtitle = "visible when Gate is on or Rule Mode is Macro",
+    Value = "gate || mode == Macro",
+    Rules = {
+        Or = {
+            {State = "demo_rule_gate", Equals = true},
+            {State = "demo_rule_mode", Equals = "Macro"},
+        },
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_not",
+    Title = "Not",
+    Subtitle = "visible when Gate is not false",
+    Value = "not (gate == false)",
+    Rules = {
+        Not = {
+            State = "demo_rule_gate",
+            Equals = false,
+        },
+    },
+})
+
+ruleSection:CreateLabel({
+    Id = "demo_rule_predicate",
+    Title = "Predicate",
+    Subtitle = "visible when Predicate Text has six or more characters",
+    Value = "len(text) >= 6",
+    Rules = {
+        Predicate = function(localState)
+            return #tostring(localState.values.demo_rule_text or "") >= 6
+        end,
+    },
+})
+
+local sectionRuleDemo = RulesTab:CreateSection({
+    Id = "demo_section_rules_container",
+    Title = "SectionRules Container",
+    SectionRules = {
+        State = "demo_rule_gate",
+        Equals = true,
+    },
+})
+
+sectionRuleDemo:CreateParagraph({
+    Id = "demo_section_rules_copy",
+    Title = "SectionRules",
+    Content = "This entire section is controlled once at the container level instead of copying the same rule to every child card.",
+})
+
+local visibilityGroup = RulesTab:CreateCollapsibleGroup({
+    Id = "demo_visibility_rules_group",
+    Title = "VisibilityRules Group",
+    Color = Color3.fromRGB(110, 198, 255),
+    VisibilityRules = {
+        State = "demo_rule_mode",
+        In = {"Target", "Saved"},
+    },
+})
+
+visibilityGroup:CreateInlineStatus({
+    Id = "demo_visibility_group_status",
+    Title = "VisibilityRules",
+    Value = "Mode is Target or Saved",
+})
+
+visibilityGroup:CreateButton({
+    Id = "demo_visibility_group_jump",
+    Title = "Jump To Target Position",
+    Subtitle = "uses a grouped action surface",
+    Hint = "This card also shows the delayed hover hint rule.",
+    Callback = function()
+        Window:BringToCard({Tab = "Build", Id = "demo_target_vector"})
+        setStatus("Jumped from VisibilityRules group")
+    end,
+})
+
+local groupRuleDemo = RulesTab:CreateAdvancedGroup({
+    Id = "demo_group_rules_advanced",
+    Title = "GroupRules Builder",
+    Description = "This advanced group uses a single GroupRules definition for all children.",
+    GroupRules = {
+        State = "demo_rule_mode",
+        NotEquals = "Disabled",
+    },
+})
+
+groupRuleDemo:CreateInlineStatus({
+    Id = "demo_group_rules_status",
+    Title = "GroupRules",
+    Value = "Hidden only when mode becomes Disabled",
+})
+
+groupRuleDemo:CreateButton({
+    Id = "demo_group_rules_button",
+    Title = "Snapshot Rule Trace",
+    Subtitle = "state-driven groups can still host ordinary action cards",
+    Callback = function()
+        local trace = Window:GetRuleTrace("demo_rule_equals")
+        Window:SetState("demo_modal_note", "Rule trace entries: " .. tostring(#trace))
+        setStatus("Rule trace captured")
+    end,
+})
+
+Catalog:CreateParagraph({
+    Id = "demo_catalog_intro",
+    Title = "Card Atlas",
+    Content = "This tab gathers the common card families into a compact atlas. Pair it with the Rules and Activity tabs to see inputs, actions, persistence, layout, and modal helpers working together.",
+})
+
+Catalog:CreateInput({
+    Id = "demo_catalog_name_input",
+    Title = "Atlas Name",
+    Subtitle = "single-line card with shared persistence",
+    Default = Window:GetState("demo_catalog_input"),
+    State = {Name = "demo_catalog_input", Persist = true},
+    Persist = true,
+    MaxLength = 24,
+})
+
+Catalog:CreateMultilineInput({
+    Id = "demo_catalog_multiline",
+    Title = "Atlas Notes",
+    Subtitle = "multiline helper card with explicit length limits",
+    Default = "Buttons act. Inputs persist. Rules decide when surfaces appear.",
+    Lines = 4,
+    MaxLength = 180,
+})
+
+Catalog:CreateCodeInput({
+    Id = "demo_catalog_code",
+    Title = "Atlas Code",
+    Subtitle = "code styling stays additive on top of multiline input",
+    Default = "return {\n    mode = 'demo',\n    enabled = true,\n}",
+    Lines = 5,
+    MaxLength = 220,
+})
+
+Catalog:CreateRepeater({
+    Id = "demo_catalog_repeater",
+    Title = "Feature Families",
+    Subtitle = "runtime-owned card rows rendered by a repeater",
+    Layout = "rows",
+    Items = {
+        {Name = "Layout", Description = "Sections, groups, subtabs, and repeaters"},
+        {Name = "Inputs", Description = "Text, code, dropdown, keybind, color, vector"},
+        {Name = "Actions", Description = "Buttons, modals, context actions, notifications"},
+        {Name = "Data", Description = "Configuration persistence plus SaveData helpers"},
+    },
+    RenderItem = function(scope, item, index)
+        scope:CreateLabel({
+            Id = "demo_catalog_family_" .. index,
+            Title = item.Name,
+            Subtitle = item.Description,
+            Value = tostring(index),
+        })
+    end,
+})
+
+Window:SetTheme(Window:GetState("demo_theme_mode") or "Aurora")
+
+if savedRepeater then
+    savedRepeater:SetItems(savedPlaces)
 end
 
-if profileExists(Window:GetConfigurationProfile()) then
-    Window:LoadConfiguration(Window:GetConfigurationProfile(), {
-        Scopes = {"window", "states", "cards"},
-    })
+if stepList then
+    stepList:SetItems(orderedSteps)
 end
-
-Window:SetTheme(Window:GetState("demo_theme_mode") or Window:GetTheme())
-serviceTable:SetRows(buildServiceRows())
-runtimeCluster:SetStatus(Window:GetState("demo_runtime_status"), Window:GetState("demo_runtime_percent"))
 
 Window:SendNotification({
-    Title = "CrystalDK V2.6.0 Demo",
-    Subtitle = "New library surface is wired into this demo.",
+    Title = "CrystalDK V2.7.0 Demo",
+    Subtitle = "New client surface is ready.",
     Duration = 3,
     Queue = "replace",
-    JumpTo = {Tab = "Overview", Id = "demo_overview_banner"},
+    JumpTo = {Tab = "Overview", Id = "demo_intro_banner"},
 })
